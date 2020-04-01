@@ -18,6 +18,8 @@ export default class Brush {
     }
 
     startStroke(imageCoord, pressure, iterate) {
+        this.imageDisplay.checkpoint(); // save image in undo stack
+
         vec3.copy(this.segmentStart, imageCoord);
         this.segmentStartPressure = pressure;
         this.segmentSoFar = 0;
@@ -47,7 +49,11 @@ export default class Brush {
 
             const radius = this.iteration(currentPoint, currentPressure);
 
-            this.segmentSoFar += this.spacing * radius;
+            let nextSpacing = this.spacing * radius;
+            if (nextSpacing < 0.01) {
+                nextSpacing = 0.01;
+            }
+            this.segmentSoFar += nextSpacing;
         }
 
         this.segmentSoFar -= segmentLength;
@@ -61,12 +67,10 @@ export default class Brush {
 
     finishStroke(imageCoord, pressure) {
         this.iteration(imageCoord, pressure);
-        this.imageDisplay.checkpoint();
     }
 
     iteration(brushCenter, pressure) {
         // a single dot of the brush
-        // vec3.floor(brushCenter, brushCenter); // make brush shape consistent by keeping center pixel-locked
 
         const radius = this.radius * pressure;
 

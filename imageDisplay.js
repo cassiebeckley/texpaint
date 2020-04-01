@@ -30,6 +30,9 @@ export default class ImageDisplay {
         this.height = height;
         this.buffer = this.createLayerBuffer(true);
 
+        this.history = [];
+        this.historyIndex = 0;
+
         this.updated = false;
 
         this.texture = gl.createTexture();
@@ -225,6 +228,10 @@ export default class ImageDisplay {
             canvas.height / 2 - this.height / 2,
             0,
         ]);
+
+        // reset history
+        this.history = [];
+        this.historyIndex = 0;
     }
 
     uiToImageCoordinates(uiCoord) {
@@ -348,7 +355,35 @@ export default class ImageDisplay {
 
     // Undo history
     checkpoint() {
-        // TODO: save image state in undo queue
+        // save image state in undo queue
+
+        this.history.length = this.historyIndex;
+
+        const currentBuffer = new Uint8ClampedArray(this.buffer);
+        this.history.push(currentBuffer);
+        this.historyIndex++;
+    }
+
+    undo() {
+        if (this.historyIndex > this.history.length) {
+            this.historyIndex = this.history.length;
+        }
+        if (this.historyIndex > 0) {
+            this.history[this.historyIndex] = new Uint8ClampedArray(
+                this.buffer
+            );
+            this.historyIndex--;
+            this.buffer = this.history[this.historyIndex];
+            this.markUpdate();
+        }
+    }
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.buffer = this.history[this.historyIndex];
+            this.markUpdate();
+        }
     }
 }
 

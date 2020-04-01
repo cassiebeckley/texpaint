@@ -1,3 +1,3 @@
 // editor parameters, probably should be customizable
 
-export const SCROLL_SCALE = 0.25;
+export const SCROLL_SCALE = 2 / 3;
