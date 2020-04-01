@@ -1,92 +1,30 @@
 import { mat4, vec3 } from 'gl-matrix';
 
-import { SCROLL_SCALE } from './constants';
 import getWindowManager from './windowManager';
 
+let _dirty = false;
+
 let imageDisplay = null;
-const eventState = {
-    mouseButtonsDown: [],
-    lastMousePosition: vec3.create(),
-};
 
 const handleResize = () => {
     getWindowManager().viewportToWindow();
 };
 
 const handleWheel = (e) => {
-    if (e.deltaY != 0) {
-        let scaleFactor = 1;
-
-        if (e.deltaY < 0) {
-            scaleFactor /= -e.deltaY * SCROLL_SCALE;
-        } else {
-            scaleFactor *= e.deltaY * SCROLL_SCALE;
-        }
-
-        // Scale with mouse as origin
-        const imageMousePos = imageDisplay.uiToImageCoordinates(
-            eventState.lastMousePosition
-        );
-        mat4.translate(
-            imageDisplay.imageMatrix,
-            imageDisplay.imageMatrix,
-            imageMousePos
-        );
-        mat4.scale(imageDisplay.imageMatrix, imageDisplay.imageMatrix, [
-            scaleFactor,
-            scaleFactor,
-            1,
-        ]);
-
-        vec3.negate(imageMousePos, imageMousePos);
-        mat4.translate(
-            imageDisplay.imageMatrix,
-            imageDisplay.imageMatrix,
-            imageMousePos
-        );
-    }
+    imageDisplay.handleWheel(e.deltaY);
 };
 
 const handleMouseDown = (e) => {
-    eventState.mouseButtonsDown[e.button] = true;
-
-    if (e.button === 1) {
-        // MMV
-        document.body.style.cursor = 'grab';
-    }
+    imageDisplay.handleMouseDown(e.button);
 };
 
 const handleMouseUp = (e) => {
-    eventState.mouseButtonsDown[e.button] = false;
-
-    if (e.button === 1) {
-        // MMV
-        document.body.style.cursor = 'auto';
-    }
+    imageDisplay.handleMouseUp(e.button);
 };
 
 const handleMouseMove = (e) => {
     const currentMousePosition = mouseEventToVec3(e);
-    const delta = vec3.create();
-    vec3.sub(delta, currentMousePosition, eventState.lastMousePosition);
-
-    // if MMB is down
-    if (eventState.mouseButtonsDown[1]) {
-        let deltaMouse = imageDisplay.uiToImageCoordinates(
-            currentMousePosition
-        );
-        let lastImageMousePos = imageDisplay.uiToImageCoordinates(
-            eventState.lastMousePosition
-        );
-        mat4.sub(deltaMouse, deltaMouse, lastImageMousePos);
-        mat4.translate(
-            imageDisplay.imageMatrix,
-            imageDisplay.imageMatrix,
-            deltaMouse
-        );
-    }
-
-    eventState.lastMousePosition = currentMousePosition;
+    imageDisplay.handleMouseMove(currentMousePosition);
 };
 
 const handleKeyup = (e) => {
@@ -113,21 +51,61 @@ const handleKeyup = (e) => {
     }
 };
 
+const handlePointerDown = (e) => {
+    if (e.pointerType === 'mouse') return;
+    e.preventDefault();
+    imageDisplay.handlePointerDown(e);
+};
+
+const handlePointerUp = (e) => {
+    if (e.pointerType === 'mouse') return;
+    e.preventDefault();
+    imageDisplay.handlePointerUp(e);
+};
+
+const handlePointerMove = (e) => {
+    if (e.pointerType === 'mouse') return;
+    e.preventDefault();
+    const currentPointerPosition = mouseEventToVec3(e);
+    imageDisplay.handlePointerMove(currentPointerPosition, e);
+};
+
 const mouseEventToVec3 = (e) => {
     const coord = vec3.create();
     vec3.set(coord, e.clientX, e.clientY, 0);
     return coord;
 };
 
+const registerEventHandler = (msg, fn) => {
+    window.addEventListener(msg, (e) => {
+        _dirty = true;
+        fn(e);
+    });
+};
+
 export default function registerEventHandlers(imgDsp) {
     imageDisplay = imgDsp;
 
-    window.addEventListener('resize', handleResize);
+    registerEventHandler('resize', handleResize);
 
-    window.addEventListener('wheel', handleWheel);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('mousemove', handleMouseMove);
+    registerEventHandler('wheel', handleWheel);
+    registerEventHandler('mousedown', handleMouseDown);
+    registerEventHandler('mouseup', handleMouseUp);
+    registerEventHandler('mousemove', handleMouseMove);
 
-    window.addEventListener('keyup', handleKeyup);
+    registerEventHandler('keyup', handleKeyup);
+
+    registerEventHandler('pointerdown', handlePointerDown);
+    registerEventHandler('pointerup', handlePointerUp);
+    registerEventHandler('pointermove', handlePointerMove);
+}
+
+export function dirty() {
+    // TODO: probably something more like React, only updating if state has changed
+    if (_dirty) {
+        _dirty = false;
+        return true;
+    }
+
+    return false;
 }

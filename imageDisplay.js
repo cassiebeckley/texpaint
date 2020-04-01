@@ -5,26 +5,37 @@ import loadShaderProgram from './shaders';
 import vertImageShader from './shaders/imageShader/vert.glsl';
 import fragImageShader from './shaders/imageShader/frag.glsl';
 
+import { SCROLL_SCALE } from './constants';
+import Brush from './brush';
+
 const imageTexturePositions = [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
 
-let shaders = {};
+const eventState = {
+    mouseButtonsDown: [],
+    lastMousePosition: vec3.create(),
+    lastPointerPosition: vec3.create(),
+    lastPressure: 0,
+    pointerDown: false, // TODO: distinguish pointers
+};
+
+const brushRadius = 10.0;
+const brushColor = vec3.create();
+vec3.set(brushColor, 0, 0, 0, 1);
 
 export default class ImageDisplay {
     constructor(width, height) {
         const gl = getWindowManager().gl;
 
-        const buffer = new Uint8ClampedArray(width * height * 4);
-
-        buffer.fill(255);
-
         this.width = width;
         this.height = height;
-        this.buffer = buffer;
+        this.buffer = this.createLayerBuffer(true);
+
+        this.updated = false;
+
         this.texture = gl.createTexture();
         this.imagePositionBuffer = gl.createBuffer();
         this.imageMatrix = mat4.create();
-        this.gl = gl;
-        this.shaders = gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -38,6 +49,8 @@ export default class ImageDisplay {
             fragImageShader
         );
 
+        // TODO create texture for each layer (probably split layer into a class)
+
         this.imageTextureBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.imageTextureBuffer);
         gl.bufferData(
@@ -45,11 +58,29 @@ export default class ImageDisplay {
             new Float32Array(imageTexturePositions),
             gl.STATIC_DRAW
         );
+
+        this.brush = new Brush(brushRadius, brushColor, 0.4, this);
+    }
+
+    createLayerBuffer(opaque) {
+        const buffer = new Uint8ClampedArray(this.width * this.height * 4);
+
+        if (opaque) {
+            buffer.fill(255);
+        }
+
+        return buffer;
     }
 
     draw() {
         const windowManager = getWindowManager();
         const gl = windowManager.gl;
+
+        //// update texture if necessary ////
+        if (this.updated) {
+            this._swapBuffer();
+            this.updated = false;
+        }
 
         //// draw 2d image view ////
         gl.useProgram(this.imageShader.program);
@@ -140,24 +171,30 @@ export default class ImageDisplay {
             this.width = imageData.width;
             this.height = imageData.height;
 
-            this.swapBuffer();
+            this.markUpdate();
             this.resetImageTransform();
         });
         tempImg.src = url;
     }
 
-    swapBuffer() {
+    markUpdate() {
+        this.updated = true;
+    }
+
+    // Internal, should only be called in draw if update necessary
+    _swapBuffer() {
+        const gl = getWindowManager().gl;
         // upload texture
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
         const level = 0;
-        const internalFormat = this.gl.RGBA;
+        const internalFormat = gl.RGBA;
         const width = this.width;
         const height = this.height;
         const border = 0;
-        const srcFormat = this.gl.RGBA;
-        const srcType = this.gl.UNSIGNED_BYTE;
-        this.gl.texImage2D(
-            this.gl.TEXTURE_2D,
+        const srcFormat = gl.RGBA;
+        const srcType = gl.UNSIGNED_BYTE;
+        gl.texImage2D(
+            gl.TEXTURE_2D,
             level,
             internalFormat,
             width,
@@ -170,13 +207,15 @@ export default class ImageDisplay {
     }
 
     resetImageTransform() {
-        const canvas = getWindowManager().canvas;
+        const windowManager = getWindowManager();
+        const canvas = windowManager.canvas;
+        const gl = windowManager.gl;
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imagePositionBuffer);
-        this.gl.bufferData(
-            this.gl.ARRAY_BUFFER,
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
             new Float32Array(generateImageVertices(this)),
-            this.gl.STATIC_DRAW
+            gl.STATIC_DRAW
         );
 
         //// initialize 2d image ////
@@ -195,15 +234,134 @@ export default class ImageDisplay {
         vec3.transformMat4(imageCoord, uiCoord, invImageMatrix);
         return imageCoord;
     }
+
+    // event handlers
+    handleWheel(deltaY) {
+        if (deltaY != 0) {
+            let scaleFactor = 1;
+
+            if (deltaY < 0) {
+                scaleFactor /= -deltaY * SCROLL_SCALE;
+            } else {
+                scaleFactor *= deltaY * SCROLL_SCALE;
+            }
+
+            // Scale with mouse as origin
+            const imageMousePos = this.uiToImageCoordinates(
+                eventState.lastMousePosition
+            );
+            mat4.translate(this.imageMatrix, this.imageMatrix, imageMousePos);
+            mat4.scale(this.imageMatrix, this.imageMatrix, [
+                scaleFactor,
+                scaleFactor,
+                1,
+            ]);
+
+            vec3.negate(imageMousePos, imageMousePos);
+            mat4.translate(this.imageMatrix, this.imageMatrix, imageMousePos);
+        }
+    }
+
+    handleMouseDown(button) {
+        eventState.mouseButtonsDown[button] = true;
+
+        if (button === 0) {
+            const imageCoord = this.uiToImageCoordinates(
+                eventState.lastMousePosition
+            );
+            this.brush.startStroke(imageCoord, 1.0);
+        }
+
+        if (button === 1) {
+            // MMV
+            document.body.style.cursor = 'grab';
+        }
+    }
+
+    handleMouseUp(button) {
+        eventState.mouseButtonsDown[button] = false;
+
+        if (button === 0) {
+            const imageCoord = this.uiToImageCoordinates(
+                eventState.lastMousePosition
+            );
+            this.brush.finishStroke(imageCoord, 1.0);
+        }
+
+        if (button === 1) {
+            // MMV
+            document.body.style.cursor = 'auto';
+        }
+    }
+
+    handleMouseMove(currentMousePosition) {
+        const delta = vec3.create();
+        vec3.sub(delta, currentMousePosition, eventState.lastMousePosition);
+
+        // if LMB is down (draw)
+        if (eventState.mouseButtonsDown[0]) {
+            const imageCoord = this.uiToImageCoordinates(currentMousePosition);
+            this.brush.continueStroke(imageCoord, 1.0);
+        }
+
+        // if MMB is down (pan)
+        if (eventState.mouseButtonsDown[1]) {
+            let deltaMouse = this.uiToImageCoordinates(currentMousePosition);
+            let lastImageMousePos = this.uiToImageCoordinates(
+                eventState.lastMousePosition
+            );
+            mat4.sub(deltaMouse, deltaMouse, lastImageMousePos);
+            mat4.translate(this.imageMatrix, this.imageMatrix, deltaMouse);
+        }
+
+        eventState.lastMousePosition = currentMousePosition;
+    }
+
+    handlePointerDown(e) {
+        const imageCoord = this.uiToImageCoordinates(
+            eventState.lastPointerPosition
+        );
+        this.brush.startStroke(imageCoord, e.pressure, true);
+        eventState.pointerDown = true;
+        eventState.lastPressure = e.pressure;
+    }
+
+    handlePointerUp(e) {
+        const imageCoord = this.uiToImageCoordinates(
+            eventState.lastPointerPosition
+        );
+        this.brush.finishStroke(imageCoord, eventState.lastPressure);
+        eventState.pointerDown = false;
+    }
+
+    handlePointerMove(currentPointerPosition, e) {
+        if (eventState.pointerDown) {
+            const imageCoord = this.uiToImageCoordinates(
+                currentPointerPosition
+            );
+            this.brush.continueStroke(imageCoord, e.pressure);
+        }
+
+        eventState.lastPointerPosition = currentPointerPosition;
+        eventState.lastPressure = e.pressure;
+    }
+
+    // Undo history
+    checkpoint() {
+        // TODO: save image state in undo queue
+    }
 }
 
 const generateImageVertices = (currentImage) => [
     0,
     0,
+
     0,
     currentImage.height,
+
     currentImage.width,
     0,
+
     currentImage.width,
     currentImage.height,
 ];

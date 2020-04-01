@@ -10,13 +10,17 @@ class WindowManager {
     }
 
     initGL() {
-        this.gl = this.canvas.getContext('webgl');
+        this.gl = this.canvas.getContext('webgl', { alpha: false });
 
         if (!this.gl) {
             throw new Error('WebGL is not supported');
         }
 
         // TODO: enable CULL_FACE
+
+        // set alpha blend mode
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
 
         return this.gl;
     }

@@ -1,13 +1,47 @@
 import { vec3 } from 'gl-matrix';
 
-import registerEventHandlers from './events';
+import registerEventHandlers, { dirty } from './events';
 import ImageDisplay from './imageDisplay';
 import getWindowManager from './windowManager';
 
 // uninitialized global variables because we have fun here
 let imageDisplay = null;
 
+let lastTS = 0;
+let samples = 0;
+let sampleCount = 0;
+let nextCollect = 60000;
+let redraws = 0;
 const draw = (ts) => {
+    //// FPS count ////
+    let deltaTime = ts - lastTS;
+    lastTS = ts;
+
+    samples += deltaTime;
+    sampleCount++;
+
+    if (ts > nextCollect) {
+        nextCollect += 60000;
+
+        const avgDelta = samples / sampleCount;
+        console.log(
+            `Average draw time: ${avgDelta} - FPS: ${
+                (1 / avgDelta) * 1000
+            } - redraws last minute: ${redraws}`
+        );
+
+        samples = sampleCount = redraws = 0;
+    }
+
+    if (!dirty()) {
+        // don't redraw if nothing's changed
+        return;
+    }
+
+    redraws++;
+
+    //// clear screen ////
+
     const windowManager = getWindowManager();
     const gl = windowManager.gl;
 
@@ -26,13 +60,13 @@ const startRunning = () => {
     const windowManager = getWindowManager();
     windowManager.initGL();
 
-    imageDisplay = new ImageDisplay(640, 480);
+    imageDisplay = new ImageDisplay(1024, 576);
 
     //// add event listeners ////
     registerEventHandlers(imageDisplay);
 
     //// reset canvas and image dimensions ////
-    imageDisplay.swapBuffer();
+    imageDisplay.markUpdate();
     windowManager.viewportToWindow();
     imageDisplay.resetImageTransform();
 
