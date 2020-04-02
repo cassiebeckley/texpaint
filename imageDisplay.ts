@@ -41,7 +41,7 @@ export default class ImageDisplay {
     brush: Brush;
 
     // texture:
-    constructor(width, height) {
+    constructor(width: number, height: number) {
         const gl = getWindowManager().gl;
 
         this.width = width;
@@ -177,12 +177,12 @@ export default class ImageDisplay {
         // TODO: probably return Promise
 
         tempImg.addEventListener('load', () => {
-            const tempImageCanvas = document.createElement('canvas');
-            tempImageCanvas.width = tempImg.width;
-            tempImageCanvas.height = tempImg.height;
-            const ctx = tempImageCanvas.getContext('2d');
-            ctx.drawImage(tempImg, 0, 0);
-            const imageData = ctx.getImageData(
+            const scratchCanvas = document.createElement('canvas');
+            scratchCanvas.width = tempImg.width;
+            scratchCanvas.height = tempImg.height;
+            const scratchContext = scratchCanvas.getContext('2d');
+            scratchContext.drawImage(tempImg, 0, 0);
+            const imageData = scratchContext.getImageData(
                 0,
                 0,
                 tempImg.width,
@@ -207,13 +207,6 @@ export default class ImageDisplay {
         const gl = getWindowManager().gl;
         // upload texture
 
-        const tempImageCanvas = document.createElement('canvas');
-        tempImageCanvas.width = this.width;
-        tempImageCanvas.height = this.height;
-        const ctx = tempImageCanvas.getContext('2d');
-        const imageData = new ImageData(this.buffer, this.width);
-        ctx.putImageData(imageData, 0, 0);
-
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         const level = 0;
         const internalFormat = gl.RGBA;
@@ -225,7 +218,7 @@ export default class ImageDisplay {
             internalFormat,
             srcFormat,
             srcType,
-            tempImageCanvas
+            new ImageData(this.buffer, this.width)
         );
     }
 
