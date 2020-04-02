@@ -1,4 +1,22 @@
-const loadShader = (gl, type, source) => {
+interface Attributes {
+    [key: string]: number;
+}
+
+interface Uniforms {
+    [key: string]: WebGLUniformLocation;
+}
+
+export interface Shader {
+    program: WebGLShader;
+    attributes: Attributes;
+    uniforms: Uniforms;
+}
+
+const loadShader = (
+    gl: WebGLRenderingContext,
+    type: number,
+    source: string
+): WebGLShader => {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
@@ -11,7 +29,11 @@ const loadShader = (gl, type, source) => {
     return shader;
 };
 
-const loadShaderProgram = (gl, vsSource, fsSource) => {
+const loadShaderProgram = (
+    gl: WebGLRenderingContext,
+    vsSource: string,
+    fsSource: string
+): Shader => {
     const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
     const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
 

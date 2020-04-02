@@ -1,12 +1,28 @@
 import { vec3, vec4 } from 'gl-matrix';
 import { lerp } from './math';
+import type ImageDisplay from './imageDisplay';
 
 // TODO: dedupe from imageDisplay
 const imageTexturePositions = [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
 
 export default class Brush {
-    constructor(radius, color, spacing, imageDisplay) {
-        this.radius = radius + 0.1;
+    radius: number;
+    color: vec3;
+    spacing: number;
+    imageDisplay: ImageDisplay;
+
+    segmentStart: vec3;
+    segmentStartPressure: number;
+    segmentSoFar: number;
+
+    constructor(
+        diameter: number,
+        color: vec3,
+        spacing: number,
+        imageDisplay: ImageDisplay
+    ) {
+        const radius = diameter / 2;
+        this.radius = radius;
         this.color = color;
         this.spacing = spacing;
 
@@ -17,7 +33,7 @@ export default class Brush {
         this.segmentSoFar = 0;
     }
 
-    startStroke(imageCoord, pressure, iterate) {
+    startStroke(imageCoord, pressure, iterate?) {
         this.imageDisplay.checkpoint(); // save image in undo stack
 
         vec3.copy(this.segmentStart, imageCoord);
@@ -30,10 +46,9 @@ export default class Brush {
     }
 
     continueStroke(imageCoord, pressure) {
-        // this.tempS(imageCoord, pressure);
         const displacement = vec3.create();
         vec3.sub(displacement, imageCoord, this.segmentStart);
-        const segmentLength = vec3.len(displacement);
+        let segmentLength = vec3.len(displacement);
         const currentPoint = vec3.create();
 
         while (this.segmentSoFar <= segmentLength) {
@@ -100,7 +115,7 @@ export default class Brush {
         // forty-five degree coordinate, to determine where to switch from horizontal to vertical
         const ffd = Math.round(radius / Math.sqrt(2));
 
-        for (let x = 0; x < ffd; x++) {
+        for (let x = 0; x < ffd + 1; x++) {
             const y = Math.sqrt(rsq - x * x);
             const frc = y % 1;
             const flr = Math.floor(y);
@@ -119,9 +134,9 @@ export default class Brush {
 
     plot4Points(center, x, y, f) {
         const point = vec3.create();
-        const color = vec4.clone(this.color);
+        const color = vec4.create();
 
-        color[3] = f;
+        vec4.set(color, this.color[0], this.color[1], this.color[2], f);
 
         vec3.add(point, center, [x, y, 0]);
         this.applyPixel(point, color);
@@ -164,18 +179,20 @@ export default class Brush {
     }
 
     fillCirclePixel(brushCenter, pixelCoord, radius) {
-        let color = vec4.clone(this.color);
+        let color = vec4.create();
+
         const distance = vec3.distance(brushCenter, pixelCoord);
+        let alpha = 0.0;
         if (distance < radius) {
-            color[3] = 1.0;
-        } else {
-            color[3] = 0.0;
+            alpha = 1.0;
         }
+
+        vec4.set(color, this.color[0], this.color[1], this.color[2], alpha);
 
         this.applyPixel(pixelCoord, color);
     }
 
-    applyPixel(pixelCoord, color) {
+    applyPixelInteger(pixelCoord: vec3, color: vec4) {
         // round pixel coordinates
         vec3.round(pixelCoord, pixelCoord);
         const baseIndex =
@@ -188,7 +205,9 @@ export default class Brush {
             this.imageDisplay.buffer[baseIndex + 2]
         );
         vec3.scale(existing, existing, 1 / 255);
-        const colorRGB = vec3.clone(color);
+
+        const colorRGB = vec3.create();
+        vec3.set(colorRGB, color[0], color[1], color[2]);
 
         vec3.lerp(colorRGB, existing, colorRGB, color[3]);
 
@@ -196,5 +215,72 @@ export default class Brush {
         this.imageDisplay.buffer[baseIndex + 1] = colorRGB[1] * 255;
         this.imageDisplay.buffer[baseIndex + 2] = colorRGB[2] * 255;
         this.imageDisplay.buffer[baseIndex + 3] = 255;
+    }
+
+    applyPixel(pixelCoord: vec3, color: vec4) {
+        const fracX = pixelCoord[0] % 1;
+        const fracY = pixelCoord[1] % 1;
+
+        if (
+            Math.abs(fracX) < Number.EPSILON &&
+            Math.abs(fracY) < Number.EPSILON
+        ) {
+            this.applyPixelInteger(pixelCoord, color);
+        } else if (Math.abs(fracX) < Number.EPSILON) {
+            const colorFirst = vec4.clone(color);
+            const colorSecond = vec4.clone(color);
+
+            colorFirst[3] *= 1 - fracY;
+            colorSecond[3] *= fracY;
+
+            const flooredCoord = vec3.create();
+            vec3.floor(flooredCoord, pixelCoord);
+
+            const currentCoord = vec3.clone(flooredCoord);
+            this.applyPixelInteger(currentCoord, colorFirst);
+
+            vec3.add(currentCoord, flooredCoord, [0, 1.0, 0]);
+            this.applyPixelInteger(currentCoord, colorSecond);
+        } else if (Math.abs(fracY) < Number.EPSILON) {
+            const colorFirst = vec4.clone(color);
+            const colorSecond = vec4.clone(color);
+
+            colorFirst[3] *= 1 - fracX;
+            colorSecond[3] *= fracX;
+
+            const flooredCoord = vec3.create();
+            vec3.floor(flooredCoord, pixelCoord);
+
+            const currentCoord = vec3.clone(flooredCoord);
+            this.applyPixelInteger(currentCoord, colorFirst);
+
+            vec3.add(currentCoord, flooredCoord, [1.0, 0, 0]);
+            this.applyPixelInteger(currentCoord, colorSecond);
+        } else {
+            const colorFirst = vec4.clone(color);
+            const colorSecond = vec4.clone(color);
+            const colorThird = vec4.clone(color);
+            const colorFourth = vec4.clone(color);
+
+            colorFirst[3] *= (1 - fracX + 1 - fracY) / 2;
+            colorSecond[3] *= (fracX + 1 - fracY) / 2;
+            colorThird[3] *= (1 - fracX + fracY) / 2;
+            colorFourth[3] *= (fracX + fracY) / 2;
+
+            const flooredCoord = vec3.create();
+            vec3.floor(flooredCoord, pixelCoord);
+
+            const currentCoord = vec3.clone(flooredCoord);
+            this.applyPixelInteger(currentCoord, colorFirst);
+
+            vec3.add(currentCoord, flooredCoord, [1.0, 0, 0]);
+            this.applyPixelInteger(currentCoord, colorSecond);
+
+            vec3.add(currentCoord, flooredCoord, [0.0, 1.0, 0]);
+            this.applyPixelInteger(currentCoord, colorThird);
+
+            vec3.add(currentCoord, flooredCoord, [1.0, 1.0, 0]);
+            this.applyPixelInteger(currentCoord, colorFourth);
+        }
     }
 }

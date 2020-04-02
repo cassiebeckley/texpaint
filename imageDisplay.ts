@@ -1,6 +1,6 @@
 import { mat4, vec3 } from 'gl-matrix';
 import getWindowManager from './windowManager';
-import loadShaderProgram from './shaders';
+import loadShaderProgram, { Shader } from './shaders';
 
 import vertImageShader from './shaders/imageShader/vert.glsl';
 import fragImageShader from './shaders/imageShader/frag.glsl';
@@ -18,11 +18,29 @@ const eventState = {
     pointerDown: false, // TODO: distinguish pointers
 };
 
-const brushRadius = 10.0;
+const brushSize = 40.0;
 const brushColor = vec3.create();
-vec3.set(brushColor, 0, 0, 0, 1);
+vec3.set(brushColor, 0, 0, 0);
 
 export default class ImageDisplay {
+    width: number;
+    height: number;
+    buffer: Uint8ClampedArray;
+
+    history: Uint8ClampedArray[];
+    historyIndex: number;
+
+    updated: boolean;
+
+    texture: WebGLTexture;
+    imagePositionBuffer: WebGLBuffer;
+    imageMatrix: mat4;
+
+    imageShader: Shader;
+    imageTextureBuffer: WebGLBuffer;
+    brush: Brush;
+
+    // texture:
     constructor(width, height) {
         const gl = getWindowManager().gl;
 
@@ -62,7 +80,7 @@ export default class ImageDisplay {
             gl.STATIC_DRAW
         );
 
-        this.brush = new Brush(brushRadius, brushColor, 0.4, this);
+        this.brush = new Brush(brushSize, brushColor, 0.4, this);
     }
 
     createLayerBuffer(opaque) {
@@ -317,7 +335,7 @@ export default class ImageDisplay {
             let lastImageMousePos = this.uiToImageCoordinates(
                 eventState.lastMousePosition
             );
-            mat4.sub(deltaMouse, deltaMouse, lastImageMousePos);
+            vec3.sub(deltaMouse, deltaMouse, lastImageMousePos);
             mat4.translate(this.imageMatrix, this.imageMatrix, deltaMouse);
         }
 

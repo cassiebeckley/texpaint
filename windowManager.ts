@@ -3,8 +3,12 @@ import { mat4 } from 'gl-matrix';
 const uiProjectionMatrix = mat4.create();
 
 class WindowManager {
+    canvas: HTMLCanvasElement;
+    gl: WebGLRenderingContext;
+    uiProjectionMatrix: mat4;
+
     constructor() {
-        this.canvas = document.getElementById('application');
+        this.canvas = <HTMLCanvasElement>document.getElementById('application');
         this.gl = null;
         this.uiProjectionMatrix = mat4.create();
     }
@@ -44,7 +48,7 @@ class WindowManager {
 }
 
 let singleton = null;
-export default function getWindowManager() {
+export default function getWindowManager(): WindowManager {
     if (singleton === null) {
         singleton = new WindowManager();
     }
