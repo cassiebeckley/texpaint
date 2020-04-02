@@ -229,6 +229,8 @@ export default class Brush {
         const fracX = pixelCoord[0] % 1;
         const fracY = pixelCoord[1] % 1;
 
+        // TODO: cleanup
+
         if (
             Math.abs(fracX) < Number.EPSILON &&
             Math.abs(fracY) < Number.EPSILON
