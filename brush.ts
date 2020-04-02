@@ -2,9 +2,6 @@ import { vec3, vec4 } from 'gl-matrix';
 import { lerp } from './math';
 import type ImageDisplay from './imageDisplay';
 
-// TODO: dedupe from imageDisplay
-const imageTexturePositions = [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
-
 export default class Brush {
     radius: number;
     color: vec3;
@@ -33,16 +30,12 @@ export default class Brush {
         this.segmentSoFar = 0;
     }
 
-    startStroke(imageCoord, pressure, iterate?) {
+    startStroke(imageCoord, pressure) {
         this.imageDisplay.checkpoint(); // save image in undo stack
 
         vec3.copy(this.segmentStart, imageCoord);
         this.segmentStartPressure = pressure;
         this.segmentSoFar = 0;
-
-        if (iterate) {
-            this.iteration(imageCoord, pressure);
-        }
     }
 
     continueStroke(imageCoord, pressure) {
@@ -65,8 +58,8 @@ export default class Brush {
             const radius = this.iteration(currentPoint, currentPressure);
 
             let nextSpacing = this.spacing * radius;
-            if (nextSpacing < 0.01) {
-                nextSpacing = 0.01;
+            if (nextSpacing < 1) {
+                nextSpacing = 1;
             }
             this.segmentSoFar += nextSpacing;
         }
@@ -87,13 +80,14 @@ export default class Brush {
     iteration(brushCenter, pressure) {
         // a single dot of the brush
 
-        const radius = this.radius * pressure;
+        const factor = pressure * pressure;
+        const radius = this.radius * factor;
 
         if (
-            brushCenter[0] <= -this.radius ||
-            brushCenter[0] >= this.imageDisplay.width + this.radius ||
-            brushCenter[1] <= -this.radius ||
-            brushCenter[1] >= this.imageDisplay.height + this.radius
+            brushCenter[0] <= -radius ||
+            brushCenter[0] >= this.imageDisplay.width + radius ||
+            brushCenter[1] <= -radius ||
+            brushCenter[1] >= this.imageDisplay.height + radius
         ) {
             // entirely outside image bounds
             return radius;
@@ -110,6 +104,8 @@ export default class Brush {
     // Xiolin Wu anti-aliased circle algorithm
     // see https://yellowsplash.wordpress.com/2009/10/23/fast-antialiased-circles-and-ellipses-from-xiaolin-wus-concepts/
     wuCircle(center, radius) {
+        if (radius < 0.5) return;
+
         const rsq = radius * radius; // radius squared
 
         // forty-five degree coordinate, to determine where to switch from horizontal to vertical
@@ -151,8 +147,19 @@ export default class Brush {
         this.applyPixel(point, color);
     }
 
-    fillCircle(center, radius) {
-        vec3.round(center, center); //?
+    fillCircle(center: vec3, radius: number) {
+        if (radius < 0.5) {
+            const color = vec4.create();
+            vec4.set(
+                color,
+                this.color[0],
+                this.color[1],
+                this.color[2],
+                radius * 2
+            );
+            this.applyPixel(center, color);
+        }
+
         const radiusSquare = vec3.create();
         vec3.set(radiusSquare, radius, radius, 0);
 
@@ -162,16 +169,12 @@ export default class Brush {
         const offset = vec3.create();
 
         for (let x = startPosition[0]; x < startPosition[0] + radius * 2; x++) {
-            if (x < 0 || x >= this.imageDisplay.width) continue;
             for (
                 let y = startPosition[1];
                 y < startPosition[1] + radius * 2;
                 y++
             ) {
-                if (y < 0 || y >= this.imageDisplay.height) continue;
-
                 vec3.set(offset, x, y, 0);
-                vec3.floor(offset, offset);
 
                 this.fillCirclePixel(center, offset, radius);
             }
@@ -218,6 +221,11 @@ export default class Brush {
     }
 
     applyPixel(pixelCoord: vec3, color: vec4) {
+        if (pixelCoord[0] < 0 || pixelCoord[0] >= this.imageDisplay.width)
+            return;
+        if (pixelCoord[1] < 0 || pixelCoord[1] >= this.imageDisplay.height)
+            return;
+
         const fracX = pixelCoord[0] % 1;
         const fracY = pixelCoord[1] % 1;
 

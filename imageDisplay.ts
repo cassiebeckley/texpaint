@@ -346,7 +346,7 @@ export default class ImageDisplay {
         const imageCoord = this.uiToImageCoordinates(
             eventState.lastPointerPosition
         );
-        this.brush.startStroke(imageCoord, e.pressure, true);
+        this.brush.startStroke(imageCoord, e.pressure);
         eventState.pointerDown = true;
         eventState.lastPressure = e.pressure;
     }

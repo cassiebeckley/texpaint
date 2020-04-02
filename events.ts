@@ -53,7 +53,9 @@ const handleKeyup = (e) => {
     }
 
     if (e.keyCode === 79) {
-        const fileSelector = document.getElementById('file-selector');
+        const fileSelector = <HTMLInputElement>(
+            document.getElementById('file-selector')
+        );
         fileSelector.click();
         fileSelector.addEventListener('change', function () {
             const file = this.files[0];
@@ -103,7 +105,7 @@ const handlePointerUp = (e) => {
     imageDisplay.handlePointerUp(e);
 };
 
-const handlePointerMove = (e) => {
+const handlePointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
