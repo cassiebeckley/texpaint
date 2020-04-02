@@ -206,24 +206,26 @@ export default class ImageDisplay {
     _swapBuffer() {
         const gl = getWindowManager().gl;
         // upload texture
+
+        const tempImageCanvas = document.createElement('canvas');
+        tempImageCanvas.width = this.width;
+        tempImageCanvas.height = this.height;
+        const ctx = tempImageCanvas.getContext('2d');
+        const imageData = new ImageData(this.buffer, this.width);
+        ctx.putImageData(imageData, 0, 0);
+
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         const level = 0;
         const internalFormat = gl.RGBA;
-        const width = this.width;
-        const height = this.height;
-        const border = 0;
         const srcFormat = gl.RGBA;
         const srcType = gl.UNSIGNED_BYTE;
         gl.texImage2D(
             gl.TEXTURE_2D,
             level,
             internalFormat,
-            width,
-            height,
-            border,
             srcFormat,
             srcType,
-            this.buffer
+            tempImageCanvas
         );
     }
 
