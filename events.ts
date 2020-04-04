@@ -1,10 +1,11 @@
 import { mat4, vec3 } from 'gl-matrix';
 
 import getWindowManager from './windowManager';
+import type ImageDisplay from './imageDisplay';
 
-let _dirty = false;
+let _dirty = true;
 
-let imageDisplay = null;
+let imageDisplay: ImageDisplay = null;
 
 const DOM_DELTA_PIXEL = 0;
 const DOM_DELTA_LINE = 1;
@@ -112,8 +113,20 @@ const handlePointerMove = (e: PointerEvent) => {
     imageDisplay.handlePointerMove(currentPointerPosition, e);
 };
 
+const handleTouchDown = (e) => {
+    e.preventDefault();
+    imageDisplay.handlePointerDown(e);
+};
+
+const handleTouchUp = (e) => {
+    e.preventDefault();
+    imageDisplay.handlePointerUp(e);
+};
+
 const handleTouchMove = (e) => {
     e.preventDefault();
+    const currentPointerPosition = mouseEventToVec3(e);
+    imageDisplay.handlePointerMove(currentPointerPosition, e);
 };
 
 const mouseEventToVec3 = (e) => {
@@ -133,10 +146,11 @@ const registerEventHandler = (msg, fn) => {
     );
 };
 
-export default function registerEventHandlers(imgDsp) {
+export default function registerEventHandlers(imgDsp: ImageDisplay) {
     imageDisplay = imgDsp;
 
     registerEventHandler('resize', handleResize);
+    registerEventHandler('orientationchange', handleResize);
 
     registerEventHandler('wheel', handleWheel);
     registerEventHandler('mousedown', handleMouseDown);
@@ -154,6 +168,8 @@ export default function registerEventHandlers(imgDsp) {
 
     // iOS events
 
+    registerEventHandler('ontouchdown', handleTouchDown);
+    registerEventHandler('ontouchup', handleTouchUp);
     registerEventHandler('ontouchmove', handleTouchMove);
 }
 

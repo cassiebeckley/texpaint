@@ -80,7 +80,7 @@ export default class Brush {
     iteration(brushCenter, pressure) {
         // a single dot of the brush
 
-        const factor = pressure * pressure;
+        const factor = pressure * pressure * pressure;
         const radius = this.radius * factor;
 
         if (
@@ -93,6 +93,7 @@ export default class Brush {
             return radius;
         }
 
+        // TODO: still not super happy with current antialiasing, check how Krita does it
         this.wuCircle(brushCenter, radius);
         this.fillCircle(brushCenter, radius);
 

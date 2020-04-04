@@ -65,8 +65,8 @@ export default class ColorSelect {
             modelViewMatrix
         );
 
-        // gl.uniform3fv(this.colorSelectShader.uniforms.uHSV, [352, 0.409, 0.91]);
-        gl.uniform3fv(this.colorSelectShader.uniforms.uHSV, [0.0, 0.409, 0.91]);
+        gl.uniform3fv(this.colorSelectShader.uniforms.uHSV, [352, 0.409, 0.91]);
+        gl.uniform1f(this.colorSelectShader.uniforms.uDisplay, 1.0);
 
         {
             const size = 2;

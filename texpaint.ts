@@ -2,10 +2,12 @@ import { vec3 } from 'gl-matrix';
 
 import registerEventHandlers, { dirty } from './events';
 import ImageDisplay from './imageDisplay';
+import ColorSelect from './colorSelect';
 import getWindowManager from './windowManager';
 
 // uninitialized global variables because we have fun here
 let imageDisplay = null;
+let colorSelect = null;
 
 let lastTS = 0;
 let samples = 0;
@@ -49,6 +51,7 @@ const draw = (ts) => {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     imageDisplay.draw();
+    colorSelect.draw();
 };
 
 const onAnimationFrame = (ts) => {
@@ -61,6 +64,7 @@ const startRunning = () => {
     windowManager.initGL();
 
     imageDisplay = new ImageDisplay(1024, 576);
+    colorSelect = new ColorSelect();
 
     //// add event listeners ////
     registerEventHandlers(imageDisplay);
@@ -71,7 +75,7 @@ const startRunning = () => {
     imageDisplay.resetImageTransform();
 
     //// start draw loop ////
-    onAnimationFrame();
+    onAnimationFrame(0.0);
 };
 
 const startRunningAndHandleErrors = () => {

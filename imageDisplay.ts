@@ -7,8 +7,7 @@ import fragImageShader from './shaders/imageShader/frag.glsl';
 
 import { SCROLL_SCALE } from './constants';
 import Brush from './brush';
-
-const imageTexturePositions = [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
+import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
 
 const eventState = {
     mouseButtonsDown: [],
@@ -37,7 +36,7 @@ export default class ImageDisplay {
     imageMatrix: mat4;
 
     imageShader: Shader;
-    imageTextureBuffer: WebGLBuffer;
+    imageUVBuffer: WebGLBuffer; // TODO: share this with all rectangles?
     brush: Brush;
 
     // texture:
@@ -54,7 +53,17 @@ export default class ImageDisplay {
         this.updated = false;
 
         this.texture = gl.createTexture();
+
         this.imagePositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(
+                generateRectVerticesStrip(0, 0, this.width, this.height)
+            ),
+            gl.STATIC_DRAW
+        );
+
         this.imageMatrix = mat4.create();
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
 
@@ -72,11 +81,11 @@ export default class ImageDisplay {
 
         // TODO create texture for each layer (probably split layer into a class)
 
-        this.imageTextureBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.imageTextureBuffer);
+        this.imageUVBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
         gl.bufferData(
             gl.ARRAY_BUFFER,
-            new Float32Array(imageTexturePositions),
+            new Float32Array(rectVerticesStripUV),
             gl.STATIC_DRAW
         );
 
@@ -144,7 +153,7 @@ export default class ImageDisplay {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.imageTextureBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
             gl.vertexAttribPointer(
                 this.imageShader.attributes.aTextureCoord,
                 size,
@@ -226,13 +235,6 @@ export default class ImageDisplay {
         const windowManager = getWindowManager();
         const canvas = windowManager.canvas;
         const gl = windowManager.gl;
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(generateImageVertices(this)),
-            gl.STATIC_DRAW
-        );
 
         //// initialize 2d image ////
         mat4.identity(this.imageMatrix);
@@ -399,17 +401,3 @@ export default class ImageDisplay {
         }
     }
 }
-
-const generateImageVertices = (currentImage) => [
-    0,
-    0,
-
-    0,
-    currentImage.height,
-
-    currentImage.width,
-    0,
-
-    currentImage.width,
-    currentImage.height,
-];
