@@ -2,10 +2,13 @@ import { mat4, vec3 } from 'gl-matrix';
 
 import getWindowManager from './windowManager';
 import type ImageDisplay from './imageDisplay';
+import type ColorSelect from './colorSelect';
+import { inBounds } from './widget';
 
 let _dirty = true;
 
 let imageDisplay: ImageDisplay = null;
+let colorSelect: ColorSelect = null;
 
 const DOM_DELTA_PIXEL = 0;
 const DOM_DELTA_LINE = 1;
@@ -35,17 +38,33 @@ const handleWheel = (e) => {
     imageDisplay.handleWheel(amount);
 };
 
+// TODO: abstraction layer that polyfills Pointer API
+
 const handleMouseDown = (e) => {
-    imageDisplay.handleMouseDown(e.button);
+    const currentMousePosition = mouseEventToVec3(e);
+    if (inBounds(colorSelect, currentMousePosition)) {
+        colorSelect.handleMouseDown(e.button);
+    } else {
+        imageDisplay.handleMouseDown(e.button);
+    }
 };
 
 const handleMouseUp = (e) => {
-    imageDisplay.handleMouseUp(e.button);
+    const currentMousePosition = mouseEventToVec3(e);
+    if (inBounds(colorSelect, currentMousePosition)) {
+        colorSelect.handleMouseUp(e.button, currentMousePosition);
+    } else {
+        imageDisplay.handleMouseUp(e.button);
+    }
 };
 
 const handleMouseMove = (e) => {
     const currentMousePosition = mouseEventToVec3(e);
-    imageDisplay.handleMouseMove(currentMousePosition);
+    if (inBounds(colorSelect, currentMousePosition)) {
+        colorSelect.handleMouseMove(currentMousePosition);
+    } else {
+        imageDisplay.handleMouseMove(currentMousePosition);
+    }
 };
 
 const handleKeyup = (e) => {
@@ -97,20 +116,34 @@ const handleKeydown = (e) => {
 const handlePointerDown = (e) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
-    imageDisplay.handlePointerDown(e);
+    const currentPointerPosition = mouseEventToVec3(e);
+    if (inBounds(colorSelect, currentPointerPosition)) {
+        colorSelect.handleMouseDown(e);
+    } else {
+        imageDisplay.handlePointerDown(e);
+    }
 };
 
 const handlePointerUp = (e) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
-    imageDisplay.handlePointerUp(e);
+    const currentPointerPosition = mouseEventToVec3(e);
+    if (inBounds(colorSelect, currentPointerPosition)) {
+        colorSelect.handleMouseUp(e, currentPointerPosition);
+    } else {
+        imageDisplay.handlePointerUp(e);
+    }
 };
 
 const handlePointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    imageDisplay.handlePointerMove(currentPointerPosition, e);
+    if (inBounds(colorSelect, currentPointerPosition)) {
+        colorSelect.handleMouseMove(currentPointerPosition);
+    } else {
+        imageDisplay.handlePointerMove(currentPointerPosition, e);
+    }
 };
 
 const handleTouchDown = (e) => {
@@ -146,8 +179,12 @@ const registerEventHandler = (msg, fn) => {
     );
 };
 
-export default function registerEventHandlers(imgDsp: ImageDisplay) {
+export default function registerEventHandlers(
+    imgDsp: ImageDisplay,
+    clrSct: ColorSelect
+) {
     imageDisplay = imgDsp;
+    colorSelect = clrSct;
 
     registerEventHandler('resize', handleResize);
     registerEventHandler('orientationchange', handleResize);

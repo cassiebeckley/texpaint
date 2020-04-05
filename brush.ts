@@ -236,7 +236,7 @@ export default class Brush {
             Math.abs(fracX) < Number.EPSILON &&
             Math.abs(fracY) < Number.EPSILON
         ) {
-            this.applyPixelInteger(pixelCoord, color);
+            this.applyPixelInteger(pixelCoord, color); // TODO: this seems to cause first iteration to be half opacity
         } else if (Math.abs(fracX) < Number.EPSILON) {
             const colorFirst = vec4.clone(color);
             const colorSecond = vec4.clone(color);

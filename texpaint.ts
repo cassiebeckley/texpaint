@@ -64,10 +64,10 @@ const startRunning = () => {
     windowManager.initGL();
 
     imageDisplay = new ImageDisplay(1024, 576);
-    colorSelect = new ColorSelect();
+    colorSelect = new ColorSelect(imageDisplay.brush);
 
     //// add event listeners ////
-    registerEventHandlers(imageDisplay);
+    registerEventHandlers(imageDisplay, colorSelect);
 
     //// reset canvas and image dimensions ////
     imageDisplay.markUpdate();
