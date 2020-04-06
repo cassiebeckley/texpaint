@@ -1,5 +1,6 @@
 import { mat4, vec3 } from 'gl-matrix';
 import type { Widget } from './widget';
+import { dirty } from './events';
 
 const uiProjectionMatrix = mat4.create();
 
@@ -9,6 +10,8 @@ class WindowManager {
     uiProjectionMatrix: mat4;
 
     widgets: Widget[];
+
+    animationFrameRequest: number;
 
     constructor() {
         this.canvas = <HTMLCanvasElement>document.getElementById('application');
@@ -65,11 +68,24 @@ class WindowManager {
     }
 
     draw() {
+        if (!dirty()) {
+            // don't redraw if nothing's changed
+            return;
+        }
         this.gl.clearColor(0.23, 0.23, 0.23, 1.0);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
         for (let i = 0; i < this.widgets.length; i++) {
             this.widgets[i].draw();
+        }
+    }
+
+    drawOnNextTick() {
+        if (!this.animationFrameRequest) {
+            this.animationFrameRequest = window.requestAnimationFrame(() => {
+                this.animationFrameRequest = null;
+                this.draw();
+            });
         }
     }
 }

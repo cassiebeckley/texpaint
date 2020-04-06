@@ -4,6 +4,7 @@ import getWindowManager from './windowManager';
 import type ImageDisplay from './imageDisplay';
 import type ColorSelect from './colorSelect';
 import { inBounds } from './widget';
+import Mesh from './mesh';
 
 let _dirty = true;
 
@@ -45,7 +46,7 @@ const handleMouseDown = (e) => {
     if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
         colorSelect.handleMouseDown(e.button);
     } else {
-        imageDisplay.handleMouseDown(e.button);
+        imageDisplay.handleMouseDown(e.button, currentMousePosition);
     }
 };
 
@@ -79,17 +80,27 @@ const handleKeyup = (e) => {
         fileSelector.click();
         fileSelector.addEventListener('change', function () {
             const file = this.files[0];
-
-            if (!file.type.startsWith('image')) {
-                throw new Error('file is not an image');
-            }
-
             const reader = new FileReader();
-            reader.onload = (e) => {
-                imageDisplay.load(e.target.result);
-            };
-            reader.readAsDataURL(file);
+
+            if (file.type.startsWith('image')) {
+                reader.onload = (e) => {
+                    imageDisplay.load(<string>e.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else if (file.name.endsWith('.obj')) {
+                reader.onload = (e) => {
+                    const mesh = Mesh.fromWaveformObj(<string>e.target.result);
+                    console.log(mesh);
+                };
+                reader.readAsBinaryString(file);
+            } else {
+                throw new Error('unsupported file format');
+            }
         });
+    }
+
+    if (e.key === 'Alt') {
+        imageDisplay.handleAltUp();
     }
 };
 
@@ -110,6 +121,10 @@ const handleKeydown = (e) => {
     // R
     if (e.keyCode === 82 && e.ctrlKey) {
         imageDisplay.redo();
+    }
+
+    if (e.key === 'Alt') {
+        imageDisplay.handleAltDown();
     }
 };
 
@@ -173,7 +188,7 @@ const registerEventHandler = (msg, fn, element: EventTarget = window) => {
         msg,
         (e) => {
             fn(e);
-            _dirty = true;
+            markDirty();
         },
         { passive: false }
     );
@@ -215,6 +230,11 @@ export default function registerEventHandlers(
         () => clrSct.toggle(),
         document.getElementsByClassName('brush-color')[0]
     );
+}
+
+export function markDirty() {
+    _dirty = true;
+    getWindowManager().drawOnNextTick();
 }
 
 export function dirty() {

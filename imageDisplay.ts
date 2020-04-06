@@ -8,13 +8,17 @@ import fragImageShader from './shaders/imageShader/frag.glsl';
 import { SCROLL_SCALE } from './constants';
 import Brush from './brush';
 import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
+import { markDirty } from './events';
 
 const eventState = {
     mouseButtonsDown: [],
     lastMousePosition: vec3.create(),
     lastPointerPosition: vec3.create(),
+    pan: false,
+    lastPanPosition: vec3.create(),
     lastPressure: 0,
     pointerDown: false, // TODO: distinguish pointers
+    altKey: false,
 };
 
 const brushSize = 40.0;
@@ -57,14 +61,6 @@ export default class ImageDisplay {
         this.texture = gl.createTexture();
 
         this.imagePositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(
-                generateRectVerticesStrip(0, 0, this.width, this.height)
-            ),
-            gl.STATIC_DRAW
-        );
 
         this.imageMatrix = mat4.create();
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -180,7 +176,7 @@ export default class ImageDisplay {
         }
     }
 
-    load(url) {
+    load(url: string) {
         // parse image file
         // we have to use Canvas as an intermediary
         const tempImg = document.createElement('img');
@@ -205,6 +201,7 @@ export default class ImageDisplay {
 
             this.markUpdate();
             this.resetImageTransform();
+            markDirty();
         });
         tempImg.src = url;
     }
@@ -246,6 +243,15 @@ export default class ImageDisplay {
             0,
         ]);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(
+                generateRectVerticesStrip(0, 0, this.width, this.height)
+            ),
+            gl.STATIC_DRAW
+        );
+
         // reset history
         this.history = [];
         this.historyIndex = 0;
@@ -286,8 +292,41 @@ export default class ImageDisplay {
         }
     }
 
-    handleMouseDown(button) {
+    handlePanStart(position: vec3) {
+        eventState.pan = true;
+        vec3.copy(eventState.lastPanPosition, position);
+        document.body.style.cursor = 'grab';
+    }
+
+    handlePanStop() {
+        eventState.pan = false;
+        document.body.style.cursor = 'auto';
+    }
+
+    handlePanMove(position: vec3) {
+        const delta = vec3.create();
+        vec3.sub(delta, position, eventState.lastPanPosition);
+
+        let deltaMouse = this.uiToImageCoordinates(position);
+        let lastImageMousePos = this.uiToImageCoordinates(
+            eventState.lastMousePosition
+        );
+        vec3.sub(deltaMouse, deltaMouse, lastImageMousePos);
+        mat4.translate(this.imageMatrix, this.imageMatrix, deltaMouse);
+
+        vec3.copy(eventState.lastPanPosition, position);
+    }
+
+    handleMouseDown(button, currentMousePosition: vec3) {
         eventState.mouseButtonsDown[button] = true;
+
+        if (
+            button === 1 ||
+            (eventState.mouseButtonsDown[0] && eventState.altKey)
+        ) {
+            // MMB
+            this.handlePanStart(currentMousePosition);
+        }
 
         if (button === 0) {
             const imageCoord = this.uiToImageCoordinates(
@@ -295,47 +334,39 @@ export default class ImageDisplay {
             );
             this.brush.startStroke(imageCoord, 1.0);
         }
-
-        if (button === 1) {
-            // MMV
-            document.body.style.cursor = 'grab';
-        }
     }
 
     handleMouseUp(button) {
         eventState.mouseButtonsDown[button] = false;
 
-        if (button === 0) {
+        if (
+            button === 1 ||
+            (eventState.mouseButtonsDown[0] && eventState.altKey)
+        ) {
+            // MMB
+            this.handlePanStop();
+        } else if (button === 0) {
             const imageCoord = this.uiToImageCoordinates(
                 eventState.lastMousePosition
             );
             this.brush.finishStroke(imageCoord, 1.0);
         }
-
-        if (button === 1) {
-            // MMV
-            document.body.style.cursor = 'auto';
-        }
     }
 
-    handleMouseMove(currentMousePosition) {
+    handleMouseMove(currentMousePosition: vec3) {
         const delta = vec3.create();
         vec3.sub(delta, currentMousePosition, eventState.lastMousePosition);
 
-        // if LMB is down (draw)
-        if (eventState.mouseButtonsDown[0]) {
+        if (
+            eventState.mouseButtonsDown[1] ||
+            (eventState.mouseButtonsDown[0] && eventState.altKey)
+        ) {
+            // if MMB is down (pan)
+            this.handlePanMove(currentMousePosition);
+        } else if (eventState.mouseButtonsDown[0]) {
+            // if LMB is down (draw)
             const imageCoord = this.uiToImageCoordinates(currentMousePosition);
             this.brush.continueStroke(imageCoord, 1.0);
-        }
-
-        // if MMB is down (pan)
-        if (eventState.mouseButtonsDown[1]) {
-            let deltaMouse = this.uiToImageCoordinates(currentMousePosition);
-            let lastImageMousePos = this.uiToImageCoordinates(
-                eventState.lastMousePosition
-            );
-            vec3.sub(deltaMouse, deltaMouse, lastImageMousePos);
-            mat4.translate(this.imageMatrix, this.imageMatrix, deltaMouse);
         }
 
         eventState.lastMousePosition = currentMousePosition;
@@ -401,5 +432,14 @@ export default class ImageDisplay {
             this.buffer = this.history[this.historyIndex];
             this.markUpdate();
         }
+    }
+
+    handleAltDown() {
+        eventState.altKey = true;
+    }
+
+    handleAltUp() {
+        console.log('hi?');
+        eventState.altKey = false;
     }
 }
