@@ -5,10 +5,6 @@ import ImageDisplay from './imageDisplay';
 import ColorSelect from './colorSelect';
 import getWindowManager from './windowManager';
 
-// uninitialized global variables because we have fun here
-let imageDisplay = null;
-let colorSelect = null;
-
 let lastTS = 0;
 let samples = 0;
 let sampleCount = 0;
@@ -44,14 +40,7 @@ const draw = (ts) => {
 
     //// clear screen ////
 
-    const windowManager = getWindowManager();
-    const gl = windowManager.gl;
-
-    gl.clearColor(0.23, 0.23, 0.23, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-
-    imageDisplay.draw();
-    colorSelect.draw();
+    getWindowManager().draw();
 };
 
 const onAnimationFrame = (ts) => {
@@ -63,8 +52,13 @@ const startRunning = () => {
     const windowManager = getWindowManager();
     windowManager.initGL();
 
-    imageDisplay = new ImageDisplay(1024, 576);
-    colorSelect = new ColorSelect(imageDisplay.brush);
+    const imageDisplay = new ImageDisplay(1024, 576);
+    const colorSelect = new ColorSelect(imageDisplay.brush);
+
+    colorSelect.setHsvColor([0, 0, 0]);
+
+    windowManager.widgets.push(imageDisplay);
+    windowManager.widgets.push(colorSelect);
 
     //// add event listeners ////
     registerEventHandlers(imageDisplay, colorSelect);

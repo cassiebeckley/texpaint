@@ -1,4 +1,5 @@
-import { mat4 } from 'gl-matrix';
+import { mat4, vec3 } from 'gl-matrix';
+import type { Widget } from './widget';
 
 const uiProjectionMatrix = mat4.create();
 
@@ -7,10 +8,14 @@ class WindowManager {
     gl: WebGLRenderingContext;
     uiProjectionMatrix: mat4;
 
+    widgets: Widget[];
+
     constructor() {
         this.canvas = <HTMLCanvasElement>document.getElementById('application');
         this.gl = null;
         this.uiProjectionMatrix = mat4.create();
+
+        this.widgets = [];
     }
 
     initGL() {
@@ -44,6 +49,28 @@ class WindowManager {
         );
 
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    setColor(color: vec3) {
+        const htmlColor = vec3.create();
+        vec3.scale(htmlColor, color, 255);
+        vec3.round(htmlColor, htmlColor);
+        const elements: HTMLCollection = document.getElementsByClassName(
+            'brush-color'
+        );
+        for (let i = 0; i < elements.length; i++) {
+            const element: HTMLElement = <HTMLElement>elements[i];
+            element.style.backgroundColor = `rgb(${htmlColor})`;
+        }
+    }
+
+    draw() {
+        this.gl.clearColor(0.23, 0.23, 0.23, 1.0);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+        for (let i = 0; i < this.widgets.length; i++) {
+            this.widgets[i].draw();
+        }
     }
 }
 

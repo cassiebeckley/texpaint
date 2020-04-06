@@ -47,13 +47,17 @@ export default class ColorSelect {
     brush: Brush;
 
     constructor(brush: Brush) {
+        this.width = this.height = 300;
         this.position = vec3.create();
-        vec3.set(this.position, 100, 100, 0);
+        vec3.set(
+            this.position,
+            getWindowManager().canvas.clientWidth - this.width - 30,
+            90,
+            0
+        );
 
         this.brush = brush;
         this.hsvColor = vec3.clone(brush.color);
-
-        this.width = this.height = 300;
 
         const gl = getWindowManager().gl;
         this.colorSelectShader = loadShaderProgram(
@@ -85,7 +89,7 @@ export default class ColorSelect {
             gl.STATIC_DRAW
         );
 
-        this.display = true;
+        this.display = false;
 
         this.selectOutputTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.selectOutputTexture);
@@ -264,22 +268,31 @@ export default class ColorSelect {
         return new ColorResult(ColorResultType.None);
     }
 
+    setHsvColor(hsv: vec3) {
+        this.hsvColor = hsv;
+        const rgb = hsvToRgb(this.hsvColor);
+        this.brush.color = rgb;
+        getWindowManager().setColor(rgb);
+    }
+
     setColorByCoords(point: vec3) {
         const localPosition = vec3.create();
         vec3.sub(localPosition, point, this.position);
         const colorResult = this.hsvColorAt(localPosition);
+
+        const hsvColor = vec3.clone(this.hsvColor);
         switch (colorResult.type) {
             case ColorResultType.SaturationValue:
-                this.hsvColor[1] = colorResult.hsv[1];
-                this.hsvColor[2] = colorResult.hsv[2];
+                hsvColor[1] = colorResult.hsv[1];
+                hsvColor[2] = colorResult.hsv[2];
                 break;
             case ColorResultType.Hue:
-                this.hsvColor[0] = colorResult.hsv[0];
+                hsvColor[0] = colorResult.hsv[0];
                 break;
         }
 
         if (colorResult.type !== ColorResultType.None) {
-            this.brush.color = hsvToRgb(this.hsvColor);
+            this.setHsvColor(hsvColor);
         }
     }
 
@@ -298,6 +311,10 @@ export default class ColorSelect {
         if (this.mouseDown) {
             this.setColorByCoords(currentMousePosition);
         }
+    }
+
+    toggle() {
+        this.display = !this.display;
     }
 }
 

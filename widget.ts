@@ -1,9 +1,11 @@
 import { vec3 } from 'gl-matrix';
 
 export interface Widget {
-    position: vec3; // TODO: check if this can be changed to vec2
+    position: vec3;
     width: number;
     height: number;
+
+    draw(): void;
 }
 
 export const inBounds = (w: Widget, point: vec3) => {

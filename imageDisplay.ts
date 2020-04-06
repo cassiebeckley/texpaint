@@ -22,6 +22,7 @@ const brushColor = vec3.create();
 vec3.set(brushColor, 0, 0, 0);
 
 export default class ImageDisplay {
+    position: vec3;
     width: number;
     height: number;
     buffer: Uint8ClampedArray;
@@ -43,6 +44,7 @@ export default class ImageDisplay {
     constructor(width: number, height: number) {
         const gl = getWindowManager().gl;
 
+        this.position = vec3.create();
         this.width = width;
         this.height = height;
         this.buffer = this.createLayerBuffer(true);

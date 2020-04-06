@@ -2,24 +2,14 @@
 <html>
     <head>
         <title>Texture Paint</title>
-        <style type="text/css">
-            input {
-                display: none;
-            }
-            body {
-                margin: 0;
-                border: 0;
-                touch-action: none;
-            }
-            #application {
-                display: block;
-                width: 100vw;
-                height: 100vh;
-            }
-        </style>
+        <link rel="stylesheet" type="text/css" href="texpaint.css" />
         <script src="texpaint.ts"></script>
     </head>
     <body>
+        <div class="top-bar">
+            <!-- TODO: make this an actual button -->
+            <div class="brush-color"></div>
+        </div>
         <canvas id="application">
             Enable javascript or use a newer browser to use this application.
         </canvas>

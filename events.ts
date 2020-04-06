@@ -42,7 +42,7 @@ const handleWheel = (e) => {
 
 const handleMouseDown = (e) => {
     const currentMousePosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentMousePosition)) {
+    if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
         colorSelect.handleMouseDown(e.button);
     } else {
         imageDisplay.handleMouseDown(e.button);
@@ -51,7 +51,7 @@ const handleMouseDown = (e) => {
 
 const handleMouseUp = (e) => {
     const currentMousePosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentMousePosition)) {
+    if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
         colorSelect.handleMouseUp(e.button, currentMousePosition);
     } else {
         imageDisplay.handleMouseUp(e.button);
@@ -60,7 +60,7 @@ const handleMouseUp = (e) => {
 
 const handleMouseMove = (e) => {
     const currentMousePosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentMousePosition)) {
+    if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
         colorSelect.handleMouseMove(currentMousePosition);
     } else {
         imageDisplay.handleMouseMove(currentMousePosition);
@@ -117,7 +117,7 @@ const handlePointerDown = (e) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentPointerPosition)) {
+    if (inBounds(colorSelect, currentPointerPosition) && colorSelect.display) {
         colorSelect.handleMouseDown(e);
     } else {
         imageDisplay.handlePointerDown(e);
@@ -128,7 +128,7 @@ const handlePointerUp = (e) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentPointerPosition)) {
+    if (inBounds(colorSelect, currentPointerPosition) && colorSelect.display) {
         colorSelect.handleMouseUp(e, currentPointerPosition);
     } else {
         imageDisplay.handlePointerUp(e);
@@ -139,7 +139,7 @@ const handlePointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentPointerPosition)) {
+    if (inBounds(colorSelect, currentPointerPosition) && colorSelect.display) {
         colorSelect.handleMouseMove(currentPointerPosition);
     } else {
         imageDisplay.handlePointerMove(currentPointerPosition, e);
@@ -168,8 +168,8 @@ const mouseEventToVec3 = (e) => {
     return coord;
 };
 
-const registerEventHandler = (msg, fn) => {
-    window.addEventListener(
+const registerEventHandler = (msg, fn, element: EventTarget = window) => {
+    element.addEventListener(
         msg,
         (e) => {
             fn(e);
@@ -208,6 +208,13 @@ export default function registerEventHandlers(
     registerEventHandler('ontouchdown', handleTouchDown);
     registerEventHandler('ontouchup', handleTouchUp);
     registerEventHandler('ontouchmove', handleTouchMove);
+
+    // top bar UI
+    registerEventHandler(
+        'click',
+        () => clrSct.toggle(),
+        document.getElementsByClassName('brush-color')[0]
+    );
 }
 
 export function dirty() {
