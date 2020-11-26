@@ -19,7 +19,7 @@ const handleResize = () => {
     getWindowManager().viewportToWindow();
 };
 
-const handleWheel = (e) => {
+const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
     let amount = e.deltaY;
 
@@ -41,25 +41,25 @@ const handleWheel = (e) => {
 
 // TODO: abstraction layer that polyfills Pointer API
 
-const handleMouseDown = (e) => {
+const handleMouseDown = (e: MouseEvent) => {
     const currentMousePosition = mouseEventToVec3(e);
     if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
-        colorSelect.handleMouseDown(e.button);
+        colorSelect.handleMouseDown(e);
     } else {
         imageDisplay.handleMouseDown(e.button, currentMousePosition);
     }
 };
 
-const handleMouseUp = (e) => {
+const handleMouseUp = (e: MouseEvent) => {
     const currentMousePosition = mouseEventToVec3(e);
     if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
-        colorSelect.handleMouseUp(e.button, currentMousePosition);
+        colorSelect.handleMouseUp(e, currentMousePosition);
     } else {
         imageDisplay.handleMouseUp(e.button);
     }
 };
 
-const handleMouseMove = (e) => {
+const handleMouseMove = (e: MouseEvent) => {
     const currentMousePosition = mouseEventToVec3(e);
     if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
         colorSelect.handleMouseMove(currentMousePosition);
@@ -68,7 +68,7 @@ const handleMouseMove = (e) => {
     }
 };
 
-const handleKeyup = (e) => {
+const handleKeyup = (e: KeyboardEvent) => {
     if (e.isComposing || e.keyCode === 229) {
         return;
     }
@@ -83,12 +83,12 @@ const handleKeyup = (e) => {
             const reader = new FileReader();
 
             if (file.type.startsWith('image')) {
-                reader.onload = (e) => {
+                reader.onload = (e: ProgressEvent<FileReader>) => {
                     imageDisplay.load(<string>e.target.result);
                 };
                 reader.readAsDataURL(file);
             } else if (file.name.endsWith('.obj')) {
-                reader.onload = (e) => {
+                reader.onload = (e: ProgressEvent<FileReader>) => {
                     const meshes = Mesh.fromWaveformObj(
                         <string>e.target.result
                     );
@@ -107,7 +107,7 @@ const handleKeyup = (e) => {
     }
 };
 
-const handleKeydown = (e) => {
+const handleKeydown = (e: KeyboardEvent) => {
     if (e.isComposing || e.keyCode === 229) {
         return;
     }
@@ -131,7 +131,7 @@ const handleKeydown = (e) => {
     }
 };
 
-const handlePointerDown = (e) => {
+const handlePointerDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
@@ -142,7 +142,7 @@ const handlePointerDown = (e) => {
     }
 };
 
-const handlePointerUp = (e) => {
+const handlePointerUp = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
@@ -164,32 +164,33 @@ const handlePointerMove = (e: PointerEvent) => {
     }
 };
 
-const handleTouchDown = (e) => {
+const handleTouchDown = (e: TouchEvent) => {
     e.preventDefault();
     imageDisplay.handlePointerDown(e);
 };
 
-const handleTouchUp = (e) => {
+const handleTouchUp = (e: TouchEvent) => {
     e.preventDefault();
     imageDisplay.handlePointerUp(e);
 };
 
-const handleTouchMove = (e) => {
+const handleTouchMove = (e: TouchEvent) => {
     e.preventDefault();
-    const currentPointerPosition = mouseEventToVec3(e);
-    imageDisplay.handlePointerMove(currentPointerPosition, e);
+    // const currentPointerPosition = mouseEventToVec3(e);
+    throw new Error("Woops not sure what's happening here"); // TODO: this is temporary; fix
+    // imageDisplay.handlePointerMove(currentPointerPosition, e);
 };
 
-const mouseEventToVec3 = (e) => {
+const mouseEventToVec3 = (e: MouseEvent) => {
     const coord = vec3.create();
     vec3.set(coord, e.clientX, e.clientY, 0);
     return coord;
 };
 
-const registerEventHandler = (msg, fn, element: EventTarget = window) => {
+const registerEventHandler = (msg: string, fn: EventListener, element: EventTarget = window) => {
     element.addEventListener(
         msg,
-        (e) => {
+        (e: Event) => {
             fn(e);
             markDirty();
         },

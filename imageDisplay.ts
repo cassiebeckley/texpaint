@@ -449,7 +449,7 @@ export default class ImageDisplay {
         }
     }
 
-    handleMouseUp(button) {
+    handleMouseUp(button: number) {
         eventState.mouseButtonsDown[button] = false;
 
         if (
