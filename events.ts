@@ -89,8 +89,11 @@ const handleKeyup = (e) => {
                 reader.readAsDataURL(file);
             } else if (file.name.endsWith('.obj')) {
                 reader.onload = (e) => {
-                    const mesh = Mesh.fromWaveformObj(<string>e.target.result);
-                    console.log(mesh);
+                    const meshes = Mesh.fromWaveformObj(
+                        <string>e.target.result
+                    );
+                    console.log(meshes[0]);
+                    imageDisplay.setMesh(meshes[0]);
                 };
                 reader.readAsBinaryString(file);
             } else {
@@ -229,6 +232,18 @@ export default function registerEventHandlers(
         'click',
         () => clrSct.toggle(),
         document.getElementsByClassName('brush-color')[0]
+    );
+
+    registerEventHandler(
+        'click',
+        () => imgDsp.show2d(),
+        document.getElementById('2d-button')
+    );
+
+    registerEventHandler(
+        'click',
+        () => imgDsp.show3d(),
+        document.getElementById('3d-button')
     );
 }
 

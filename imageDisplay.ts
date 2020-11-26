@@ -9,6 +9,12 @@ import { SCROLL_SCALE } from './constants';
 import Brush from './brush';
 import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
 import { markDirty } from './events';
+import type Mesh from './mesh';
+
+enum DisplayType {
+    Texture,
+    Mesh,
+}
 
 const eventState = {
     mouseButtonsDown: [],
@@ -39,10 +45,15 @@ export default class ImageDisplay {
     texture: WebGLTexture;
     imagePositionBuffer: WebGLBuffer;
     imageMatrix: mat4;
+    meshMatrix: mat4;
 
     imageShader: Shader;
     imageUVBuffer: WebGLBuffer; // TODO: share this with all rectangles?
     brush: Brush;
+
+    showing: DisplayType;
+
+    mesh: Mesh;
 
     // texture:
     constructor(width: number, height: number) {
@@ -63,6 +74,7 @@ export default class ImageDisplay {
         this.imagePositionBuffer = gl.createBuffer();
 
         this.imageMatrix = mat4.create();
+        this.meshMatrix = mat4.create();
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -88,6 +100,9 @@ export default class ImageDisplay {
         );
 
         this.brush = new Brush(brushSize, brushColor, 0.4, this);
+
+        this.showing = DisplayType.Texture;
+        this.mesh = null;
     }
 
     createLayerBuffer(opaque) {
@@ -100,15 +115,9 @@ export default class ImageDisplay {
         return buffer;
     }
 
-    draw() {
+    drawTexture() {
         const windowManager = getWindowManager();
         const gl = windowManager.gl;
-
-        //// update texture if necessary ////
-        if (this.updated) {
-            this._swapBuffer();
-            this.updated = false;
-        }
 
         //// draw 2d image view ////
         gl.useProgram(this.imageShader.program);
@@ -174,6 +183,41 @@ export default class ImageDisplay {
             const count = 4;
             gl.drawArrays(gl.TRIANGLE_STRIP, offset, count);
         }
+    }
+
+    drawMesh() {
+        const gl = getWindowManager().gl;
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+
+        if (this.mesh) {
+            this.mesh.draw(this.meshMatrix);
+        }
+
+        gl.disable(gl.DEPTH_TEST);
+    }
+
+    draw() {
+        //// update texture if necessary ////
+        if (this.updated) {
+            this._swapBuffer();
+            this.updated = false;
+        }
+
+        switch (this.showing) {
+            case DisplayType.Texture:
+                this.drawTexture();
+                break;
+            case DisplayType.Mesh:
+                this.drawMesh();
+                break;
+        }
+    }
+
+    setMesh(mesh: Mesh) {
+        mesh.setTexture(this.texture);
+        this.mesh = mesh;
+        this.markUpdate();
     }
 
     load(url: string) {
@@ -252,6 +296,11 @@ export default class ImageDisplay {
             gl.STATIC_DRAW
         );
 
+        //// initialize mesh transform ////
+
+        mat4.identity(this.meshMatrix);
+        mat4.translate(this.meshMatrix, this.meshMatrix, [0.0, 0.0, -6.0]);
+
         // reset history
         this.history = [];
         this.historyIndex = 0;
@@ -265,8 +314,28 @@ export default class ImageDisplay {
         return imageCoord;
     }
 
+    uiToMeshCoordinates(uiCoord) {
+        // TODO: figure out wtf I'm trying to do
+        const wm = getWindowManager();
+        const canvas = wm.canvas;
+        const clipCoords = vec3.create(); // TODO: optimization: minimize allocations
+        vec3.set(
+            clipCoords,
+            uiCoord[0] / canvas.clientWidth,
+            uiCoord[0] / canvas.clientHeight,
+            0.0
+        );
+
+        const invProjectionMatrix = mat4.create();
+        mat4.invert(invProjectionMatrix, wm.projectionMatrix);
+
+        vec3.transformMat4(clipCoords, clipCoords, invProjectionMatrix);
+        return clipCoords;
+    }
+
     // event handlers
-    handleWheel(deltaY) {
+    handleWheel(deltaY: number) {
+        const canvas = getWindowManager().canvas;
         if (deltaY != 0) {
             let scaleFactor = 1;
 
@@ -276,19 +345,53 @@ export default class ImageDisplay {
                 scaleFactor *= deltaY * SCROLL_SCALE;
             }
 
-            // Scale with mouse as origin
-            const imageMousePos = this.uiToImageCoordinates(
-                eventState.lastMousePosition
-            );
-            mat4.translate(this.imageMatrix, this.imageMatrix, imageMousePos);
-            mat4.scale(this.imageMatrix, this.imageMatrix, [
-                scaleFactor,
-                scaleFactor,
-                1,
-            ]);
+            switch (this.showing) {
+                case DisplayType.Texture:
+                    // Scale with mouse as origin
+                    const imageMousePos = this.uiToImageCoordinates(
+                        eventState.lastMousePosition
+                    );
+                    mat4.translate(
+                        this.imageMatrix,
+                        this.imageMatrix,
+                        imageMousePos
+                    );
+                    mat4.scale(this.imageMatrix, this.imageMatrix, [
+                        scaleFactor,
+                        scaleFactor,
+                        1,
+                    ]);
 
-            vec3.negate(imageMousePos, imageMousePos);
-            mat4.translate(this.imageMatrix, this.imageMatrix, imageMousePos);
+                    vec3.negate(imageMousePos, imageMousePos);
+                    mat4.translate(
+                        this.imageMatrix,
+                        this.imageMatrix,
+                        imageMousePos
+                    );
+                    break;
+                case DisplayType.Mesh: // TODO: scale from center of window
+                    const meshMiddlePos = this.uiToMeshCoordinates([0, 0, 0]);
+                    mat4.translate(
+                        this.meshMatrix,
+                        this.meshMatrix,
+                        meshMiddlePos
+                    );
+                    console.log(this.meshMatrix);
+
+                    mat4.scale(this.meshMatrix, this.meshMatrix, [
+                        scaleFactor,
+                        scaleFactor,
+                        scaleFactor,
+                    ]);
+
+                    vec3.negate(meshMiddlePos, meshMiddlePos);
+                    mat4.translate(
+                        this.meshMatrix,
+                        this.meshMatrix,
+                        meshMiddlePos
+                    );
+                    break;
+            }
         }
     }
 
@@ -307,12 +410,22 @@ export default class ImageDisplay {
         const delta = vec3.create();
         vec3.sub(delta, position, eventState.lastPanPosition);
 
-        let deltaMouse = this.uiToImageCoordinates(position);
-        let lastImageMousePos = this.uiToImageCoordinates(
-            eventState.lastMousePosition
-        );
-        vec3.sub(deltaMouse, deltaMouse, lastImageMousePos);
-        mat4.translate(this.imageMatrix, this.imageMatrix, deltaMouse);
+        switch (this.showing) {
+            case DisplayType.Texture:
+                let deltaMouse = this.uiToImageCoordinates(position);
+                let lastImageMousePos = this.uiToImageCoordinates(
+                    eventState.lastMousePosition
+                );
+                vec3.sub(deltaMouse, deltaMouse, lastImageMousePos);
+                mat4.translate(this.imageMatrix, this.imageMatrix, deltaMouse);
+                break;
+            case DisplayType.Mesh:
+                const translation = vec3.create();
+                vec3.scale(translation, delta, 0.005);
+                translation[1] = translation[1] * -1;
+                mat4.translate(this.meshMatrix, this.meshMatrix, translation);
+                break;
+        }
 
         vec3.copy(eventState.lastPanPosition, position);
     }
@@ -356,6 +469,11 @@ export default class ImageDisplay {
     handleMouseMove(currentMousePosition: vec3) {
         const delta = vec3.create();
         vec3.sub(delta, currentMousePosition, eventState.lastMousePosition);
+
+        console.log(
+            currentMousePosition,
+            this.uiToMeshCoordinates(currentMousePosition)
+        );
 
         if (
             eventState.mouseButtonsDown[1] ||
@@ -439,7 +557,14 @@ export default class ImageDisplay {
     }
 
     handleAltUp() {
-        console.log('hi?');
         eventState.altKey = false;
+    }
+
+    show2d() {
+        this.showing = DisplayType.Texture;
+    }
+
+    show3d() {
+        this.showing = DisplayType.Mesh;
     }
 }

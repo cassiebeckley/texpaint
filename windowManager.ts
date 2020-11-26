@@ -8,6 +8,7 @@ class WindowManager {
     canvas: HTMLCanvasElement;
     gl: WebGLRenderingContext;
     uiProjectionMatrix: mat4;
+    projectionMatrix: mat4;
 
     widgets: Widget[];
 
@@ -17,6 +18,7 @@ class WindowManager {
         this.canvas = <HTMLCanvasElement>document.getElementById('application');
         this.gl = null;
         this.uiProjectionMatrix = mat4.create();
+        this.projectionMatrix = mat4.create();
 
         this.widgets = [];
     }
@@ -51,6 +53,14 @@ class WindowManager {
             1
         );
 
+        mat4.perspective(
+            this.projectionMatrix,
+            (27 * Math.PI) / 180,
+            this.canvas.width / this.canvas.height,
+            0.1,
+            100.0
+        );
+
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
@@ -73,7 +83,8 @@ class WindowManager {
             return;
         }
         this.gl.clearColor(0.23, 0.23, 0.23, 1.0);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+        this.gl.clearDepth(1.0);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         for (let i = 0; i < this.widgets.length; i++) {
             this.widgets[i].draw();

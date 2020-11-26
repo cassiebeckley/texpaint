@@ -1,4 +1,9 @@
-import { vec3, vec2 } from 'gl-matrix';
+import { vec3, vec2, mat4 } from 'gl-matrix';
+import getWindowManager from './windowManager';
+import loadShaderProgram, { Shader } from './shaders';
+
+import vertStandardShader from './shaders/standardShader/vert.glsl';
+import fragStandardShader from './shaders/standardShader/frag.glsl';
 
 interface IndexedVertex {
     vertexIndex: number;
@@ -45,7 +50,6 @@ const reIndex = (
             const uv = allUVs[i + j];
 
             const ref = `${vertex}:${normal}:${uv}`;
-            // console.log(ref);
 
             if (!newIndex.hasOwnProperty(ref)) {
                 mesh.vertices[currentIndex] = vertex;
@@ -60,6 +64,8 @@ const reIndex = (
         mesh.triangles.push(triangle);
     }
 
+    mesh.setBuffers();
+
     return mesh;
 };
 
@@ -69,6 +75,15 @@ export default class Mesh {
     vertexNormals: vec3[];
     uvs: vec2[];
     triangles: Triangle[];
+
+    vertexBuffer: WebGLBuffer;
+    normalBuffer: WebGLBuffer;
+    uvBuffer: WebGLBuffer;
+
+    indexBuffer: WebGLBuffer;
+    standardShader: Shader;
+
+    texture: WebGLTexture;
 
     constructor(
         name: string,
@@ -82,6 +97,153 @@ export default class Mesh {
         this.vertexNormals = vertexNormals;
         this.uvs = uvs;
         this.triangles = triangles;
+
+        const gl = getWindowManager().gl;
+        this.vertexBuffer = gl.createBuffer();
+        this.normalBuffer = gl.createBuffer();
+        this.uvBuffer = gl.createBuffer();
+
+        this.indexBuffer = gl.createBuffer();
+
+        this.standardShader = loadShaderProgram(
+            gl,
+            vertStandardShader,
+            fragStandardShader
+        );
+    }
+
+    setTexture(tex: WebGLTexture) {
+        this.texture = tex;
+    }
+
+    setBuffers() {
+        const gl = getWindowManager().gl;
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(flatten(this.vertices)),
+            gl.STATIC_DRAW
+        );
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(flatten(this.vertexNormals)),
+            gl.STATIC_DRAW
+        );
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(flatten(this.uvs)),
+            gl.STATIC_DRAW
+        );
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+        gl.bufferData(
+            gl.ELEMENT_ARRAY_BUFFER,
+            new Uint16Array(flatten(this.triangles)),
+            gl.STATIC_DRAW
+        );
+    }
+
+    draw(modelViewMatrix: mat4) {
+        const windowManager = getWindowManager();
+        const gl = windowManager.gl;
+
+        //// draw 2d image view ////
+        gl.useProgram(this.standardShader.program);
+
+        // set projection and model*view matrices;
+        gl.uniformMatrix4fv(
+            this.standardShader.uniforms.uProjectionMatrix,
+            false,
+            windowManager.projectionMatrix
+        );
+        gl.uniformMatrix4fv(
+            this.standardShader.uniforms.uModelViewMatrix,
+            false,
+            modelViewMatrix
+        );
+
+        {
+            const size = 3;
+            const type = gl.FLOAT; // 32 bit floats
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+            gl.vertexAttribPointer(
+                this.standardShader.attributes.aVertexPosition,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.standardShader.attributes.aVertexPosition
+            );
+        }
+
+        {
+            const size = 2;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+            gl.vertexAttribPointer(
+                this.standardShader.attributes.aTextureCoord,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.standardShader.attributes.aTextureCoord
+            );
+        }
+
+        {
+            const size = 3;
+            const type = gl.FLOAT;
+            const normalize = true;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
+            gl.vertexAttribPointer(
+                this.standardShader.attributes.aVertexNormal,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.standardShader.attributes.aVertexNormal
+            );
+        }
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+
+        if (this.texture) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.uniform1i(this.standardShader.uniforms.uSampler, 0);
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+
+        gl.drawElements(
+            gl.TRIANGLES,
+            this.triangles.length * 3,
+            gl.UNSIGNED_SHORT,
+            0
+        );
     }
 
     static fromWaveformObj(obj: string): Mesh[] {
@@ -189,3 +351,16 @@ export default class Mesh {
         return meshes;
     }
 }
+
+const flatten = (vs): number[] => {
+    let flat = [];
+
+    for (let i = 0; i < vs.length; i++) {
+        let v = vs[i];
+        for (let j = 0; j < v.length; j++) {
+            flat.push(v[j]);
+        }
+    }
+
+    return flat;
+};
