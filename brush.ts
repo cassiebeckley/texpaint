@@ -30,7 +30,7 @@ export default class Brush {
         this.segmentSoFar = 0;
     }
 
-    startStroke(imageCoord, pressure) {
+    startStroke(imageCoord: vec3, pressure: number) {
         this.imageDisplay.checkpoint(); // save image in undo stack
 
         vec3.copy(this.segmentStart, imageCoord);
@@ -38,7 +38,7 @@ export default class Brush {
         this.segmentSoFar = 0;
     }
 
-    continueStroke(imageCoord, pressure) {
+    continueStroke(imageCoord: vec3, pressure: number) {
         const displacement = vec3.create();
         vec3.sub(displacement, imageCoord, this.segmentStart);
         let segmentLength = vec3.len(displacement);
@@ -73,11 +73,11 @@ export default class Brush {
         vec3.copy(this.segmentStart, imageCoord);
     }
 
-    finishStroke(imageCoord, pressure) {
+    finishStroke(imageCoord: vec3, pressure: number) {
         this.iteration(imageCoord, pressure);
     }
 
-    iteration(brushCenter, pressure) {
+    iteration(brushCenter: vec3, pressure: number) {
         // a single dot of the brush
 
         const factor = pressure * pressure * pressure;
@@ -104,7 +104,7 @@ export default class Brush {
 
     // Xiolin Wu anti-aliased circle algorithm
     // see https://yellowsplash.wordpress.com/2009/10/23/fast-antialiased-circles-and-ellipses-from-xiaolin-wus-concepts/
-    wuCircle(center, radius) {
+    wuCircle(center: vec3, radius: number) {
         if (radius < 0.5) return;
 
         const rsq = radius * radius; // radius squared
@@ -129,7 +129,7 @@ export default class Brush {
         }
     }
 
-    plot4Points(center, x, y, f) {
+    plot4Points(center: vec3, x: number, y: number, f: number) {
         const point = vec3.create();
         const color = vec4.create();
 
@@ -182,7 +182,7 @@ export default class Brush {
         }
     }
 
-    fillCirclePixel(brushCenter, pixelCoord, radius) {
+    fillCirclePixel(brushCenter: vec3, pixelCoord: vec3, radius: number) {
         let color = vec4.create();
 
         const distance = vec3.distance(brushCenter, pixelCoord);
