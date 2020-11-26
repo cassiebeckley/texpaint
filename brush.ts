@@ -93,59 +93,11 @@ export default class Brush {
             return radius;
         }
 
-        // TODO: still not super happy with current antialiasing, check how Krita does it
-        this.wuCircle(brushCenter, radius);
         this.fillCircle(brushCenter, radius);
 
         this.imageDisplay.markUpdate();
 
         return radius;
-    }
-
-    // Xiolin Wu anti-aliased circle algorithm
-    // see https://yellowsplash.wordpress.com/2009/10/23/fast-antialiased-circles-and-ellipses-from-xiaolin-wus-concepts/
-    wuCircle(center: vec3, radius: number) {
-        if (radius < 0.5) return;
-
-        const rsq = radius * radius; // radius squared
-
-        // forty-five degree coordinate, to determine where to switch from horizontal to vertical
-        const ffd = Math.round(radius / Math.sqrt(2));
-
-        for (let x = 0; x < ffd + 1; x++) {
-            const y = Math.sqrt(rsq - x * x);
-            const frc = y % 1;
-            const flr = Math.floor(y);
-            this.plot4Points(center, x, flr, 1 - frc);
-            this.plot4Points(center, x, flr + 1, frc);
-        }
-
-        for (let y = 0; y < ffd; y++) {
-            const x = Math.sqrt(rsq - y * y);
-            const frc = x % 1;
-            const flr = Math.floor(x);
-            this.plot4Points(center, flr, y, 1 - frc);
-            this.plot4Points(center, flr + 1, y, frc);
-        }
-    }
-
-    plot4Points(center: vec3, x: number, y: number, f: number) {
-        const point = vec3.create();
-        const color = vec4.create();
-
-        vec4.set(color, this.color[0], this.color[1], this.color[2], f);
-
-        vec3.add(point, center, [x, y, 0]);
-        this.applyPixel(point, color);
-
-        vec3.add(point, center, [x, -y, 0]);
-        this.applyPixel(point, color);
-
-        vec3.add(point, center, [-x, y, 0]);
-        this.applyPixel(point, color);
-
-        vec3.add(point, center, [-x, -y, 0]);
-        this.applyPixel(point, color);
     }
 
     fillCircle(center: vec3, radius: number) {
@@ -158,7 +110,7 @@ export default class Brush {
                 this.color[2],
                 radius * 2
             );
-            this.applyPixel(center, color);
+            this.applyPixelInteger(center, color);
         }
 
         const radiusSquare = vec3.create();
@@ -169,10 +121,10 @@ export default class Brush {
 
         const offset = vec3.create();
 
-        for (let x = startPosition[0]; x < startPosition[0] + radius * 2; x++) {
+        for (let x = Math.floor(startPosition[0]); x <= Math.ceil(startPosition[0] + radius * 2); x++) {
             for (
-                let y = startPosition[1];
-                y < startPosition[1] + radius * 2;
+                let y = Math.floor(startPosition[1]);
+                y <= Math.ceil(startPosition[1] + radius * 2);
                 y++
             ) {
                 vec3.set(offset, x, y, 0);
@@ -186,14 +138,13 @@ export default class Brush {
         let color = vec4.create();
 
         const distance = vec3.distance(brushCenter, pixelCoord);
-        let alpha = 0.0;
-        if (distance < radius) {
-            alpha = 1.0;
-        }
+        const delta = 2; // this is a bit soft, but it looks nice to me so I'm keeping it
+
+        const alpha = 1 - smoothstep(radius - delta, radius, distance);
 
         vec4.set(color, this.color[0], this.color[1], this.color[2], alpha);
 
-        this.applyPixel(pixelCoord, color);
+        this.applyPixelInteger(pixelCoord, color);
     }
 
     applyPixelInteger(pixelCoord: vec3, color: vec4) {
@@ -220,78 +171,16 @@ export default class Brush {
         this.imageDisplay.buffer[baseIndex + 2] = colorRGB[2] * 255;
         this.imageDisplay.buffer[baseIndex + 3] = 255;
     }
-
-    applyPixel(pixelCoord: vec3, color: vec4) {
-        if (pixelCoord[0] < 0 || pixelCoord[0] >= this.imageDisplay.width)
-            return;
-        if (pixelCoord[1] < 0 || pixelCoord[1] >= this.imageDisplay.height)
-            return;
-
-        const fracX = pixelCoord[0] % 1;
-        const fracY = pixelCoord[1] % 1;
-
-        // TODO: cleanup
-
-        if (
-            Math.abs(fracX) < Number.EPSILON &&
-            Math.abs(fracY) < Number.EPSILON
-        ) {
-            this.applyPixelInteger(pixelCoord, color); // TODO: this seems to cause first iteration to be half opacity
-        } else if (Math.abs(fracX) < Number.EPSILON) {
-            const colorFirst = vec4.clone(color);
-            const colorSecond = vec4.clone(color);
-
-            colorFirst[3] *= 1 - fracY;
-            colorSecond[3] *= fracY;
-
-            const flooredCoord = vec3.create();
-            vec3.floor(flooredCoord, pixelCoord);
-
-            const currentCoord = vec3.clone(flooredCoord);
-            this.applyPixelInteger(currentCoord, colorFirst);
-
-            vec3.add(currentCoord, flooredCoord, [0, 1.0, 0]);
-            this.applyPixelInteger(currentCoord, colorSecond);
-        } else if (Math.abs(fracY) < Number.EPSILON) {
-            const colorFirst = vec4.clone(color);
-            const colorSecond = vec4.clone(color);
-
-            colorFirst[3] *= 1 - fracX;
-            colorSecond[3] *= fracX;
-
-            const flooredCoord = vec3.create();
-            vec3.floor(flooredCoord, pixelCoord);
-
-            const currentCoord = vec3.clone(flooredCoord);
-            this.applyPixelInteger(currentCoord, colorFirst);
-
-            vec3.add(currentCoord, flooredCoord, [1.0, 0, 0]);
-            this.applyPixelInteger(currentCoord, colorSecond);
-        } else {
-            const colorFirst = vec4.clone(color);
-            const colorSecond = vec4.clone(color);
-            const colorThird = vec4.clone(color);
-            const colorFourth = vec4.clone(color);
-
-            colorFirst[3] *= (1 - fracX + 1 - fracY) / 2;
-            colorSecond[3] *= (fracX + 1 - fracY) / 2;
-            colorThird[3] *= (1 - fracX + fracY) / 2;
-            colorFourth[3] *= (fracX + fracY) / 2;
-
-            const flooredCoord = vec3.create();
-            vec3.floor(flooredCoord, pixelCoord);
-
-            const currentCoord = vec3.clone(flooredCoord);
-            this.applyPixelInteger(currentCoord, colorFirst);
-
-            vec3.add(currentCoord, flooredCoord, [1.0, 0, 0]);
-            this.applyPixelInteger(currentCoord, colorSecond);
-
-            vec3.add(currentCoord, flooredCoord, [0.0, 1.0, 0]);
-            this.applyPixelInteger(currentCoord, colorThird);
-
-            vec3.add(currentCoord, flooredCoord, [1.0, 1.0, 0]);
-            this.applyPixelInteger(currentCoord, colorFourth);
-        }
-    }
 }
+
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+    let t = (x - edge0) / (edge1 - edge0);
+
+    if (t < 0.0) {
+        t = 0.0;
+    } else if (t > 1.0) {
+        t = 1.0;
+    }
+
+    return t * t * (3.0 - 2.0 * t);
+};
