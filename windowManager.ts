@@ -1,5 +1,6 @@
 import { mat4, vec3 } from 'gl-matrix';
 import type { Widget } from './widget';
+import { inBounds } from './widget';
 import { dirty } from './events';
 
 const uiProjectionMatrix = mat4.create();
@@ -87,7 +88,9 @@ class WindowManager {
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         for (let i = 0; i < this.widgets.length; i++) {
-            this.widgets[i].draw();
+            if (this.widgets[i].isVisible()) {
+                this.widgets[i].draw();
+            }
         }
     }
 
@@ -98,6 +101,21 @@ class WindowManager {
                 this.draw();
             });
         }
+    }
+    
+    getWidgetAtPosition(position: vec3) {
+        // go in reverse of draw order
+        for (let i = this.widgets.length - 1; i >= 0; i--) {
+            let widget = this.widgets[i];
+            if (inBounds(widget, position) && widget.isVisible()) {
+                return widget;
+            }
+        }
+    }
+
+    getDefaultWidget() {
+        // return bottom-most (first) widget
+        return this.widgets[0];
     }
 }
 

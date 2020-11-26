@@ -6,7 +6,9 @@ import fragColorSelectShader from './shaders/colorSelectShader/frag.glsl';
 
 import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
 import { vec3, mat4 } from 'gl-matrix';
+import { mouseEventToVec3 } from './events';
 import type Brush from './brush';
+import { SlateState } from './slate';
 
 const radius = 110;
 const wheelWidth = 40;
@@ -37,7 +39,7 @@ export default class ColorSelect {
     vertexBuffer: WebGLBuffer;
     uvBuffer: WebGLBuffer;
 
-    display: boolean;
+    slateState: SlateState;
 
     selectOutputTexture: WebGLTexture;
     selectOutputFramebuffer: WebGLFramebuffer;
@@ -46,7 +48,7 @@ export default class ColorSelect {
 
     brush: Brush;
 
-    constructor(brush: Brush) {
+    constructor(brush: Brush, slateState: SlateState) {
         this.width = this.height = 300;
         this.position = vec3.create();
         vec3.set(
@@ -89,7 +91,7 @@ export default class ColorSelect {
             gl.STATIC_DRAW
         );
 
-        this.display = false;
+        this.slateState = slateState;
 
         this.selectOutputTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.selectOutputTexture);
@@ -122,14 +124,22 @@ export default class ColorSelect {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
+    isVisible() {
+        return this.slateState.showColorWheel;
+    }
+
+    getWidgetWidth() {
+        return this.width;
+    }
+
+    getWidgetHeight() {
+        return this.height;
+    }
+
     drawWheel(display: boolean, modelViewMatrix?: mat4) {
         if (!modelViewMatrix) {
             modelViewMatrix = mat4.create();
             mat4.identity(modelViewMatrix);
-        }
-
-        if (!this.display) {
-            return;
         }
 
         const windowManager = getWindowManager();
@@ -212,10 +222,6 @@ export default class ColorSelect {
     }
 
     draw() {
-        if (!this.display) {
-            return;
-        }
-
         this.drawWheel(true);
     }
 
@@ -296,25 +302,37 @@ export default class ColorSelect {
         }
     }
 
+    handleWheel(amount: number) {
+        // do nothing
+    }
+
     handleMouseDown(e: MouseEvent) {
         this.mouseDown = true;
     }
 
-    handleMouseUp(e: MouseEvent, currentMousePosition: vec3) {
+    handleMouseUp(e: MouseEvent) {
         if (this.mouseDown) {
-            this.setColorByCoords(currentMousePosition);
+            this.setColorByCoords(mouseEventToVec3(e));
         }
         this.mouseDown = false;
     }
 
-    handleMouseMove(currentMousePosition: vec3) {
+    handleMouseMove(e: MouseEvent) {
         if (this.mouseDown) {
-            this.setColorByCoords(currentMousePosition);
+            this.setColorByCoords(mouseEventToVec3(e));
         }
     }
 
-    toggle() {
-        this.display = !this.display;
+    handlePointerDown(e: PointerEvent) {
+        this.handleMouseDown(e);
+    }
+
+    handlePointerUp(e: PointerEvent) {
+        this.handleMouseUp(e);
+    }
+
+    handlePointerMove(e: PointerEvent) {
+        this.handleMouseMove(e);
     }
 }
 

@@ -1,15 +1,9 @@
-import { mat4, vec3 } from 'gl-matrix';
+import { vec3 } from 'gl-matrix';
 
 import getWindowManager from './windowManager';
-import type ImageDisplay from './imageDisplay';
-import type ColorSelect from './colorSelect';
-import { inBounds } from './widget';
-import Mesh from './mesh';
+import { DisplayType, SlateState } from './slate';
 
 let _dirty = true;
-
-let imageDisplay: ImageDisplay = null;
-let colorSelect: ColorSelect = null;
 
 const DOM_DELTA_PIXEL = 0;
 const DOM_DELTA_LINE = 1;
@@ -36,109 +30,42 @@ const handleWheel = (e: WheelEvent) => {
             break;
     }
 
-    imageDisplay.handleWheel(amount);
+    getWindowManager().getDefaultWidget().handleWheel(amount);
 };
 
 // TODO: abstraction layer that polyfills Pointer API
 
 const handleMouseDown = (e: MouseEvent) => {
     const currentMousePosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
-        colorSelect.handleMouseDown(e);
-    } else {
-        imageDisplay.handleMouseDown(e.button, currentMousePosition);
+    const widget = getWindowManager().getWidgetAtPosition(currentMousePosition);
+    if (widget) {
+        widget.handleMouseDown(e);
     }
 };
 
 const handleMouseUp = (e: MouseEvent) => {
     const currentMousePosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
-        colorSelect.handleMouseUp(e, currentMousePosition);
-    } else {
-        imageDisplay.handleMouseUp(e.button);
+    const widget = getWindowManager().getWidgetAtPosition(currentMousePosition);
+    if (widget) {
+        widget.handleMouseUp(e);
     }
 };
 
 const handleMouseMove = (e: MouseEvent) => {
     const currentMousePosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentMousePosition) && colorSelect.display) {
-        colorSelect.handleMouseMove(currentMousePosition);
-    } else {
-        imageDisplay.handleMouseMove(currentMousePosition);
-    }
-};
-
-const handleKeyup = (e: KeyboardEvent) => {
-    if (e.isComposing || e.keyCode === 229) {
-        return;
-    }
-
-    if (e.keyCode === 79) {
-        const fileSelector = <HTMLInputElement>(
-            document.getElementById('file-selector')
-        );
-        fileSelector.click();
-        fileSelector.addEventListener('change', function () {
-            const file = this.files[0];
-            const reader = new FileReader();
-
-            if (file.type.startsWith('image')) {
-                reader.onload = (e: ProgressEvent<FileReader>) => {
-                    imageDisplay.load(<string>e.target.result);
-                };
-                reader.readAsDataURL(file);
-            } else if (file.name.endsWith('.obj')) {
-                reader.onload = (e: ProgressEvent<FileReader>) => {
-                    const meshes = Mesh.fromWaveformObj(
-                        <string>e.target.result
-                    );
-                    console.log(meshes[0]);
-                    imageDisplay.setMesh(meshes[0]);
-                };
-                reader.readAsBinaryString(file);
-            } else {
-                throw new Error('unsupported file format');
-            }
-        });
-    }
-
-    if (e.key === 'Alt') {
-        imageDisplay.handleAltUp();
-    }
-};
-
-const handleKeydown = (e: KeyboardEvent) => {
-    if (e.isComposing || e.keyCode === 229) {
-        return;
-    }
-
-    // Z
-    if (e.keyCode === 90 && e.ctrlKey) {
-        if (e.shiftKey) {
-            imageDisplay.redo();
-        } else {
-            imageDisplay.undo();
-        }
-    }
-
-    // R
-    if (e.keyCode === 82 && e.ctrlKey) {
-        imageDisplay.redo();
-    }
-
-    if (e.key === 'Alt') {
-        imageDisplay.handleAltDown();
+    const widget = getWindowManager().getWidgetAtPosition(currentMousePosition);
+    if (widget) {
+        widget.handleMouseMove(e);
     }
 };
 
 const handlePointerDown = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse') return; // TODO: use polyfill of some type so we can use these without mouse handlers
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentPointerPosition) && colorSelect.display) {
-        colorSelect.handleMouseDown(e);
-    } else {
-        imageDisplay.handlePointerDown(e);
+    const widget = getWindowManager().getWidgetAtPosition(currentPointerPosition);
+    if (widget) {
+        widget.handlePointerDown(e);
     }
 };
 
@@ -146,10 +73,9 @@ const handlePointerUp = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentPointerPosition) && colorSelect.display) {
-        colorSelect.handleMouseUp(e, currentPointerPosition);
-    } else {
-        imageDisplay.handlePointerUp(e);
+    const widget = getWindowManager().getWidgetAtPosition(currentPointerPosition);
+    if (widget) {
+        widget.handlePointerUp(e);
     }
 };
 
@@ -157,21 +83,22 @@ const handlePointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    if (inBounds(colorSelect, currentPointerPosition) && colorSelect.display) {
-        colorSelect.handleMouseMove(currentPointerPosition);
-    } else {
-        imageDisplay.handlePointerMove(currentPointerPosition, e);
+    const widget = getWindowManager().getWidgetAtPosition(currentPointerPosition);
+    if (widget) {
+        widget.handlePointerMove(e);
     }
 };
 
 const handleTouchDown = (e: TouchEvent) => {
     e.preventDefault();
-    imageDisplay.handlePointerDown(e);
+    // imageDisplay.handlePointerDown(e);
+    // TODO: fix this
 };
 
 const handleTouchUp = (e: TouchEvent) => {
     e.preventDefault();
-    imageDisplay.handlePointerUp(e);
+    // imageDisplay.handlePointerUp(e);
+    // TODO: fix this
 };
 
 const handleTouchMove = (e: TouchEvent) => {
@@ -181,30 +108,9 @@ const handleTouchMove = (e: TouchEvent) => {
     // imageDisplay.handlePointerMove(currentPointerPosition, e);
 };
 
-const mouseEventToVec3 = (e: MouseEvent) => {
-    const coord = vec3.create();
-    vec3.set(coord, e.clientX, e.clientY, 0);
-    return coord;
-};
-
-const registerEventHandler = (msg: string, fn: EventListener, element: EventTarget = window) => {
-    element.addEventListener(
-        msg,
-        (e: Event) => {
-            fn(e);
-            markDirty();
-        },
-        { passive: false }
-    );
-};
-
 export default function registerEventHandlers(
-    imgDsp: ImageDisplay,
-    clrSct: ColorSelect
+    slateState: SlateState
 ) {
-    imageDisplay = imgDsp;
-    colorSelect = clrSct;
-
     registerEventHandler('resize', handleResize);
     registerEventHandler('orientationchange', handleResize);
 
@@ -212,9 +118,6 @@ export default function registerEventHandlers(
     registerEventHandler('mousedown', handleMouseDown);
     registerEventHandler('mouseup', handleMouseUp);
     registerEventHandler('mousemove', handleMouseMove);
-
-    registerEventHandler('keyup', handleKeyup);
-    registerEventHandler('keydown', handleKeydown);
 
     // handles Wacom tablet
 
@@ -231,22 +134,39 @@ export default function registerEventHandlers(
     // top bar UI
     registerEventHandler(
         'click',
-        () => clrSct.toggle(),
+        () => slateState.showColorWheel = !slateState.showColorWheel,
         document.getElementsByClassName('brush-color')[0]
     );
 
     registerEventHandler(
         'click',
-        () => imgDsp.show2d(),
+        () => slateState.displayType = DisplayType.Texture,
         document.getElementById('2d-button')
     );
 
     registerEventHandler(
         'click',
-        () => imgDsp.show3d(),
+        () => slateState.displayType = DisplayType.Mesh,
         document.getElementById('3d-button')
     );
 }
+
+export function registerEventHandler(msg: string, fn: EventListener, element: EventTarget = window) {
+    element.addEventListener(
+        msg,
+        (e: Event) => {
+            fn(e);
+            markDirty();
+        },
+        { passive: false }
+    );
+};
+
+export function mouseEventToVec3(e: MouseEvent) {
+    const coord = vec3.create();
+    vec3.set(coord, e.clientX, e.clientY, 0);
+    return coord;
+};
 
 export function markDirty() {
     _dirty = true;

@@ -8,13 +8,10 @@ import fragImageShader from './shaders/imageShader/frag.glsl';
 import { SCROLL_SCALE } from './constants';
 import Brush from './brush';
 import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
-import { markDirty } from './events';
-import type Mesh from './mesh';
+import { markDirty, mouseEventToVec3, registerEventHandler } from './events';
+import Mesh from './mesh';
 
-enum DisplayType {
-    Texture,
-    Mesh,
-}
+import { DisplayType, SlateState } from './slate';
 
 const eventState = {
     mouseButtonsDown: [],
@@ -51,12 +48,12 @@ export default class ImageDisplay {
     imageUVBuffer: WebGLBuffer; // TODO: share this with all rectangles?
     brush: Brush;
 
-    showing: DisplayType;
+    slateState: SlateState;
 
     mesh: Mesh;
 
     // texture:
-    constructor(width: number, height: number) {
+    constructor(width: number, height: number, slateState: SlateState) {
         const gl = getWindowManager().gl;
 
         this.position = vec3.create();
@@ -101,11 +98,27 @@ export default class ImageDisplay {
 
         this.brush = new Brush(brushSize, brushColor, 0.4, this);
 
-        this.showing = DisplayType.Texture;
         this.mesh = null;
+
+        this.slateState = slateState;
+
+        registerEventHandler('keyup', (e: KeyboardEvent) => this.handleKeyup(e)); // TODO: figure out if we really want events here
+        registerEventHandler('keydown', (e: KeyboardEvent) => this.handleKeydown(e));
     }
 
-    createLayerBuffer(opaque) {
+    isVisible() {
+        return true;
+    }
+
+    getWidgetWidth() {
+        return getWindowManager().canvas.width;
+    }
+
+    getWidgetHeight() {
+        return getWindowManager().canvas.height;
+    }
+
+    createLayerBuffer(opaque: boolean) {
         const buffer = new Uint8ClampedArray(this.width * this.height * 4);
 
         if (opaque) {
@@ -204,7 +217,7 @@ export default class ImageDisplay {
             this.updated = false;
         }
 
-        switch (this.showing) {
+        switch (this.slateState.displayType) {
             case DisplayType.Texture:
                 this.drawTexture();
                 break;
@@ -335,7 +348,6 @@ export default class ImageDisplay {
 
     // event handlers
     handleWheel(deltaY: number) {
-        const canvas = getWindowManager().canvas;
         if (deltaY != 0) {
             let scaleFactor = 1;
 
@@ -345,7 +357,7 @@ export default class ImageDisplay {
                 scaleFactor *= deltaY * SCROLL_SCALE;
             }
 
-            switch (this.showing) {
+            switch (this.slateState.displayType) {
                 case DisplayType.Texture:
                     // Scale with mouse as origin
                     const imageMousePos = this.uiToImageCoordinates(
@@ -376,7 +388,7 @@ export default class ImageDisplay {
                         this.meshMatrix,
                         meshMiddlePos
                     );
-                    console.log(this.meshMatrix);
+                    // console.log(this.meshMatrix);
 
                     mat4.scale(this.meshMatrix, this.meshMatrix, [
                         scaleFactor,
@@ -410,7 +422,7 @@ export default class ImageDisplay {
         const delta = vec3.create();
         vec3.sub(delta, position, eventState.lastPanPosition);
 
-        switch (this.showing) {
+        switch (this.slateState.displayType) {
             case DisplayType.Texture:
                 let deltaMouse = this.uiToImageCoordinates(position);
                 let lastImageMousePos = this.uiToImageCoordinates(
@@ -430,18 +442,18 @@ export default class ImageDisplay {
         vec3.copy(eventState.lastPanPosition, position);
     }
 
-    handleMouseDown(button, currentMousePosition: vec3) {
-        eventState.mouseButtonsDown[button] = true;
+    handleMouseDown(e: MouseEvent) {
+        eventState.mouseButtonsDown[e.button] = true;
 
         if (
-            button === 1 ||
+            e.button === 1 ||
             (eventState.mouseButtonsDown[0] && eventState.altKey)
         ) {
             // MMB
-            this.handlePanStart(currentMousePosition);
+            this.handlePanStart(mouseEventToVec3(e));
         }
 
-        if (button === 0) {
+        if (e.button === 0) {
             const imageCoord = this.uiToImageCoordinates(
                 eventState.lastMousePosition
             );
@@ -449,16 +461,16 @@ export default class ImageDisplay {
         }
     }
 
-    handleMouseUp(button: number) {
-        eventState.mouseButtonsDown[button] = false;
+    handleMouseUp(e: MouseEvent) {
+        eventState.mouseButtonsDown[e.button] = false;
 
         if (
-            button === 1 ||
+            e.button === 1 ||
             (eventState.mouseButtonsDown[0] && eventState.altKey)
         ) {
             // MMB
             this.handlePanStop();
-        } else if (button === 0) {
+        } else if (e.button === 0) {
             const imageCoord = this.uiToImageCoordinates(
                 eventState.lastMousePosition
             );
@@ -466,14 +478,15 @@ export default class ImageDisplay {
         }
     }
 
-    handleMouseMove(currentMousePosition: vec3) {
+    handleMouseMove(e: MouseEvent) {
+        const currentMousePosition = mouseEventToVec3(e);
         const delta = vec3.create();
         vec3.sub(delta, currentMousePosition, eventState.lastMousePosition);
 
-        console.log(
-            currentMousePosition,
-            this.uiToMeshCoordinates(currentMousePosition)
-        );
+        // console.log(
+        //     currentMousePosition,
+        //     this.uiToMeshCoordinates(currentMousePosition)
+        // );
 
         if (
             eventState.mouseButtonsDown[1] ||
@@ -490,7 +503,7 @@ export default class ImageDisplay {
         eventState.lastMousePosition = currentMousePosition;
     }
 
-    handlePointerDown(e) {
+    handlePointerDown(e: PointerEvent) {
         const imageCoord = this.uiToImageCoordinates(
             eventState.lastPointerPosition
         );
@@ -499,7 +512,7 @@ export default class ImageDisplay {
         eventState.lastPressure = e.pressure;
     }
 
-    handlePointerUp(e) {
+    handlePointerUp(e: PointerEvent) {
         const imageCoord = this.uiToImageCoordinates(
             eventState.lastPointerPosition
         );
@@ -507,7 +520,9 @@ export default class ImageDisplay {
         eventState.pointerDown = false;
     }
 
-    handlePointerMove(currentPointerPosition, e) {
+    handlePointerMove(e: PointerEvent) {
+        const currentPointerPosition = mouseEventToVec3(e);
+
         if (eventState.pointerDown) {
             const imageCoord = this.uiToImageCoordinates(
                 currentPointerPosition
@@ -560,11 +575,69 @@ export default class ImageDisplay {
         eventState.altKey = false;
     }
 
-    show2d() {
-        this.showing = DisplayType.Texture;
+    handleKeyup (e: KeyboardEvent) {
+        if (e.isComposing || e.keyCode === 229) {
+            return;
+        }
+
+        if (e.keyCode === 79) {
+            const fileSelector = <HTMLInputElement>(
+                document.getElementById('file-selector')
+            );
+            fileSelector.click();
+
+            const imageDisplay = this;
+
+            fileSelector.addEventListener('change', function () {
+                const file = this.files[0];
+                const reader = new FileReader();
+
+                if (file.type.startsWith('image')) {
+                    reader.onload = (e: ProgressEvent<FileReader>) => {
+                        imageDisplay.load(<string>e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                } else if (file.name.endsWith('.obj')) {
+                    reader.onload = (e: ProgressEvent<FileReader>) => {
+                        const meshes = Mesh.fromWaveformObj(
+                            <string>e.target.result
+                        );
+                        console.log(meshes[0]);
+                        imageDisplay.setMesh(meshes[0]);
+                    };
+                    reader.readAsBinaryString(file);
+                } else {
+                    throw new Error('unsupported file format');
+                }
+            });
+        }
+
+        if (e.key === 'Alt') {
+            this.handleAltUp();
+        }
     }
 
-    show3d() {
-        this.showing = DisplayType.Mesh;
+    handleKeydown (e: KeyboardEvent) {
+        if (e.isComposing || e.keyCode === 229) {
+            return;
+        }
+
+        // Z
+        if (e.keyCode === 90 && e.ctrlKey) {
+            if (e.shiftKey) {
+                this.redo();
+            } else {
+                this.undo();
+            }
+        }
+
+        // R
+        if (e.keyCode === 82 && e.ctrlKey) {
+            this.redo();
+        }
+
+        if (e.key === 'Alt') {
+            this.handleAltDown();
+        }
     }
 }
