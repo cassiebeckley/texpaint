@@ -102,7 +102,7 @@ class WindowManager {
             });
         }
     }
-    
+
     getWidgetAtPosition(position: vec3) {
         // go in reverse of draw order
         for (let i = this.widgets.length - 1; i >= 0; i--) {

@@ -1,6 +1,6 @@
 import registerEventHandlers, { dirty } from './events';
-import ImageDisplay from './imageDisplay';
-import ColorSelect from './colorSelect';
+import ImageDisplay from './widget/imageDisplay';
+import ColorSelect from './widget/colorSelect';
 import getWindowManager from './windowManager';
 import { SlateState } from './slate';
 

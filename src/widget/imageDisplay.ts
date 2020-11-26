@@ -1,17 +1,17 @@
 import { mat4, vec3 } from 'gl-matrix';
-import getWindowManager from './windowManager';
-import loadShaderProgram, { Shader } from './shaders';
+import getWindowManager from '../windowManager';
+import loadShaderProgram, { Shader } from '../shaders';
 
-import vertImageShader from './shaders/imageShader/vert.glsl';
-import fragImageShader from './shaders/imageShader/frag.glsl';
+import vertImageShader from '../shaders/imageShader/vert.glsl';
+import fragImageShader from '../shaders/imageShader/frag.glsl';
 
-import { SCROLL_SCALE } from './constants';
-import Brush from './brush';
-import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
-import { markDirty, mouseEventToVec3, registerEventHandler } from './events';
-import Mesh from './mesh';
+import { SCROLL_SCALE } from '../constants';
+import Brush from '../brush';
+import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
+import { markDirty, mouseEventToVec3, registerEventHandler } from '../events';
+import Mesh from '../mesh';
 
-import { DisplayType, SlateState } from './slate';
+import { DisplayType, SlateState } from '../slate';
 
 const eventState = {
     mouseButtonsDown: [],
@@ -102,8 +102,12 @@ export default class ImageDisplay {
 
         this.slateState = slateState;
 
-        registerEventHandler('keyup', (e: KeyboardEvent) => this.handleKeyup(e)); // TODO: figure out if we really want events here
-        registerEventHandler('keydown', (e: KeyboardEvent) => this.handleKeydown(e));
+        registerEventHandler('keyup', (e: KeyboardEvent) =>
+            this.handleKeyup(e)
+        ); // TODO: figure out if we really want events here
+        registerEventHandler('keydown', (e: KeyboardEvent) =>
+            this.handleKeydown(e)
+        );
     }
 
     isVisible() {
@@ -575,7 +579,7 @@ export default class ImageDisplay {
         eventState.altKey = false;
     }
 
-    handleKeyup (e: KeyboardEvent) {
+    handleKeyup(e: KeyboardEvent) {
         if (e.isComposing || e.keyCode === 229) {
             return;
         }
@@ -617,7 +621,7 @@ export default class ImageDisplay {
         }
     }
 
-    handleKeydown (e: KeyboardEvent) {
+    handleKeydown(e: KeyboardEvent) {
         if (e.isComposing || e.keyCode === 229) {
             return;
         }

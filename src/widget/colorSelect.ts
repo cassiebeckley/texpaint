@@ -1,14 +1,14 @@
-import getWindowManager from './windowManager';
-import loadShaderProgram, { Shader } from './shaders';
+import getWindowManager from '../windowManager';
+import loadShaderProgram, { Shader } from '../shaders';
 
-import vertColorSelectShader from './shaders/colorSelectShader/vert.glsl';
-import fragColorSelectShader from './shaders/colorSelectShader/frag.glsl';
+import vertColorSelectShader from '../shaders/colorSelectShader/vert.glsl';
+import fragColorSelectShader from '../shaders/colorSelectShader/frag.glsl';
 
-import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
+import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
 import { vec3, mat4 } from 'gl-matrix';
-import { mouseEventToVec3 } from './events';
-import type Brush from './brush';
-import { SlateState } from './slate';
+import { mouseEventToVec3 } from '../events';
+import type Brush from '../brush';
+import { SlateState } from '../slate';
 
 const radius = 110;
 const wheelWidth = 40;

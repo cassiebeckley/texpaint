@@ -2,20 +2,20 @@ import { vec3 } from 'gl-matrix';
 
 export interface Widget {
     position: vec3;
-    
+
     isVisible(): boolean;
-    
+
     getWidgetWidth(): number;
     getWidgetHeight(): number;
 
     draw(): void;
 
     handleWheel(amount: number): void;
-    
+
     handleMouseDown(e: MouseEvent): void;
     handleMouseMove(e: MouseEvent): void;
     handleMouseUp(e: MouseEvent): void;
-    
+
     handlePointerDown(e: PointerEvent): void;
     handlePointerMove(e: PointerEvent): void;
     handlePointerUp(e: PointerEvent): void;

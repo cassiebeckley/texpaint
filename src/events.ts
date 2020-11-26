@@ -63,7 +63,9 @@ const handlePointerDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return; // TODO: use polyfill of some type so we can use these without mouse handlers
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(currentPointerPosition);
+    const widget = getWindowManager().getWidgetAtPosition(
+        currentPointerPosition
+    );
     if (widget) {
         widget.handlePointerDown(e);
     }
@@ -73,7 +75,9 @@ const handlePointerUp = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(currentPointerPosition);
+    const widget = getWindowManager().getWidgetAtPosition(
+        currentPointerPosition
+    );
     if (widget) {
         widget.handlePointerUp(e);
     }
@@ -83,7 +87,9 @@ const handlePointerMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
     const currentPointerPosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(currentPointerPosition);
+    const widget = getWindowManager().getWidgetAtPosition(
+        currentPointerPosition
+    );
     if (widget) {
         widget.handlePointerMove(e);
     }
@@ -108,9 +114,7 @@ const handleTouchMove = (e: TouchEvent) => {
     // imageDisplay.handlePointerMove(currentPointerPosition, e);
 };
 
-export default function registerEventHandlers(
-    slateState: SlateState
-) {
+export default function registerEventHandlers(slateState: SlateState) {
     registerEventHandler('resize', handleResize);
     registerEventHandler('orientationchange', handleResize);
 
@@ -134,24 +138,28 @@ export default function registerEventHandlers(
     // top bar UI
     registerEventHandler(
         'click',
-        () => slateState.showColorWheel = !slateState.showColorWheel,
+        () => (slateState.showColorWheel = !slateState.showColorWheel),
         document.getElementsByClassName('brush-color')[0]
     );
 
     registerEventHandler(
         'click',
-        () => slateState.displayType = DisplayType.Texture,
+        () => (slateState.displayType = DisplayType.Texture),
         document.getElementById('2d-button')
     );
 
     registerEventHandler(
         'click',
-        () => slateState.displayType = DisplayType.Mesh,
+        () => (slateState.displayType = DisplayType.Mesh),
         document.getElementById('3d-button')
     );
 }
 
-export function registerEventHandler(msg: string, fn: EventListener, element: EventTarget = window) {
+export function registerEventHandler(
+    msg: string,
+    fn: EventListener,
+    element: EventTarget = window
+) {
     element.addEventListener(
         msg,
         (e: Event) => {
@@ -160,13 +168,13 @@ export function registerEventHandler(msg: string, fn: EventListener, element: Ev
         },
         { passive: false }
     );
-};
+}
 
 export function mouseEventToVec3(e: MouseEvent) {
     const coord = vec3.create();
     vec3.set(coord, e.clientX, e.clientY, 0);
     return coord;
-};
+}
 
 export function markDirty() {
     _dirty = true;

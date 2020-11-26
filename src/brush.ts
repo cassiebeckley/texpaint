@@ -1,6 +1,6 @@
 import { vec3, vec4 } from 'gl-matrix';
 import { lerp } from './math';
-import type ImageDisplay from './imageDisplay';
+import type ImageDisplay from './widget/imageDisplay';
 
 export default class Brush {
     radius: number;
@@ -121,7 +121,11 @@ export default class Brush {
 
         const offset = vec3.create();
 
-        for (let x = Math.floor(startPosition[0]); x <= Math.ceil(startPosition[0] + radius * 2); x++) {
+        for (
+            let x = Math.floor(startPosition[0]);
+            x <= Math.ceil(startPosition[0] + radius * 2);
+            x++
+        ) {
             for (
                 let y = Math.floor(startPosition[1]);
                 y <= Math.ceil(startPosition[1] + radius * 2);
