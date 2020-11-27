@@ -1,12 +1,12 @@
 import { vec3, vec4 } from 'gl-matrix';
 import { lerp } from './math';
-import type ImageDisplay from './widget/imageDisplay';
+import Slate from './slate';
 
 export default class Brush {
     radius: number;
     color: vec3;
     spacing: number;
-    imageDisplay: ImageDisplay;
+    slate: Slate;
 
     segmentStart: vec3;
     segmentStartPressure: number;
@@ -16,14 +16,14 @@ export default class Brush {
         diameter: number,
         color: vec3,
         spacing: number,
-        imageDisplay: ImageDisplay
+        slate: Slate,
     ) {
         const radius = diameter / 2;
         this.radius = radius;
         this.color = color;
         this.spacing = spacing;
 
-        this.imageDisplay = imageDisplay;
+        this.slate = slate;
 
         this.segmentStart = vec3.create();
         this.segmentStartPressure = 0;
@@ -31,7 +31,7 @@ export default class Brush {
     }
 
     startStroke(imageCoord: vec3, pressure: number) {
-        this.imageDisplay.checkpoint(); // save image in undo stack
+        this.slate.checkpoint(); // save image in undo stack
 
         vec3.copy(this.segmentStart, imageCoord);
         this.segmentStartPressure = pressure;
@@ -85,9 +85,9 @@ export default class Brush {
 
         if (
             brushCenter[0] <= -radius ||
-            brushCenter[0] >= this.imageDisplay.width + radius ||
+            brushCenter[0] >= this.slate.width + radius ||
             brushCenter[1] <= -radius ||
-            brushCenter[1] >= this.imageDisplay.height + radius
+            brushCenter[1] >= this.slate.height + radius
         ) {
             // entirely outside image bounds
             return radius;
@@ -95,7 +95,7 @@ export default class Brush {
 
         this.fillCircle(brushCenter, radius);
 
-        this.imageDisplay.markUpdate();
+        this.slate.markUpdate();
 
         return radius;
     }
@@ -155,13 +155,13 @@ export default class Brush {
         // round pixel coordinates
         vec3.round(pixelCoord, pixelCoord);
         const baseIndex =
-            (pixelCoord[1] * this.imageDisplay.width + pixelCoord[0]) * 4;
+            (pixelCoord[1] * this.slate.width + pixelCoord[0]) * 4;
         const existing = vec3.create();
         vec3.set(
             existing,
-            this.imageDisplay.buffer[baseIndex],
-            this.imageDisplay.buffer[baseIndex + 1],
-            this.imageDisplay.buffer[baseIndex + 2]
+            this.slate.buffer[baseIndex],
+            this.slate.buffer[baseIndex + 1],
+            this.slate.buffer[baseIndex + 2]
         );
         vec3.scale(existing, existing, 1 / 255);
 
@@ -170,10 +170,10 @@ export default class Brush {
 
         vec3.lerp(colorRGB, existing, colorRGB, color[3]);
 
-        this.imageDisplay.buffer[baseIndex] = colorRGB[0] * 255;
-        this.imageDisplay.buffer[baseIndex + 1] = colorRGB[1] * 255;
-        this.imageDisplay.buffer[baseIndex + 2] = colorRGB[2] * 255;
-        this.imageDisplay.buffer[baseIndex + 3] = 255;
+        this.slate.buffer[baseIndex] = colorRGB[0] * 255;
+        this.slate.buffer[baseIndex + 1] = colorRGB[1] * 255;
+        this.slate.buffer[baseIndex + 2] = colorRGB[2] * 255;
+        this.slate.buffer[baseIndex + 3] = 255;
     }
 }
 

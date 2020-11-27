@@ -12,13 +12,13 @@ export interface Widget {
 
     handleWheel(amount: number): void;
 
-    handleMouseDown(e: MouseEvent): void;
-    handleMouseMove(e: MouseEvent): void;
-    handleMouseUp(e: MouseEvent): void;
+    handleMouseDown(e: MouseEvent, relativePosition: vec3): void;
+    handleMouseMove(e: MouseEvent, relativePosition: vec3): void;
+    handleMouseUp(e: MouseEvent, relativePosition: vec3): void;
 
-    handlePointerDown(e: PointerEvent): void;
-    handlePointerMove(e: PointerEvent): void;
-    handlePointerUp(e: PointerEvent): void;
+    handlePointerDown(e: PointerEvent, relativePosition: vec3): void;
+    handlePointerMove(e: PointerEvent, relativePosition: vec3): void;
+    handlePointerUp(e: PointerEvent, relativePosition: vec3): void;
 }
 
 export const inBounds = (w: Widget, point: vec3) => {

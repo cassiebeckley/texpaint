@@ -2,16 +2,16 @@ import registerEventHandlers, { dirty } from './events';
 import ImageDisplay from './widget/imageDisplay';
 import ColorSelect from './widget/colorSelect';
 import getWindowManager from './windowManager';
-import { SlateState } from './slate';
+import { AppState } from './appState';
 
 const startRunning = () => {
     const windowManager = getWindowManager();
     windowManager.initGL();
 
-    const slateState = new SlateState();
+    const appState = new AppState();
 
-    const imageDisplay = new ImageDisplay(1024, 576, slateState);
-    const colorSelect = new ColorSelect(imageDisplay.brush, slateState); // TODO: refactor so that brush settings are in SlateState
+    const imageDisplay = new ImageDisplay(1024, 576, appState);
+    const colorSelect = new ColorSelect(imageDisplay.brush, appState); // TODO: refactor so that brush settings are in AppState
 
     colorSelect.setHsvColor([0, 0, 0]);
 
@@ -19,10 +19,9 @@ const startRunning = () => {
     windowManager.widgets.push(colorSelect);
 
     //// add event listeners ////
-    registerEventHandlers(slateState);
+    registerEventHandlers(appState);
 
     //// reset canvas and image dimensions ////
-    imageDisplay.markUpdate();
     windowManager.viewportToWindow();
     imageDisplay.resetImageTransform();
 

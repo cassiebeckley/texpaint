@@ -6,9 +6,8 @@ import fragColorSelectShader from '../shaders/colorSelectShader/frag.glsl';
 
 import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
 import { vec3, mat4 } from 'gl-matrix';
-import { mouseEventToVec3 } from '../events';
 import type Brush from '../brush';
-import { SlateState } from '../slate';
+import { AppState } from '../appState';
 
 const radius = 110;
 const wheelWidth = 40;
@@ -39,7 +38,7 @@ export default class ColorSelect {
     vertexBuffer: WebGLBuffer;
     uvBuffer: WebGLBuffer;
 
-    slateState: SlateState;
+    appState: AppState;
 
     selectOutputTexture: WebGLTexture;
     selectOutputFramebuffer: WebGLFramebuffer;
@@ -48,7 +47,7 @@ export default class ColorSelect {
 
     brush: Brush;
 
-    constructor(brush: Brush, slateState: SlateState) {
+    constructor(brush: Brush, appState: AppState) {
         this.width = this.height = 300;
         this.position = vec3.create();
         vec3.set(
@@ -91,7 +90,7 @@ export default class ColorSelect {
             gl.STATIC_DRAW
         );
 
-        this.slateState = slateState;
+        this.appState = appState;
 
         this.selectOutputTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.selectOutputTexture);
@@ -125,7 +124,7 @@ export default class ColorSelect {
     }
 
     isVisible() {
-        return this.slateState.showColorWheel;
+        return this.appState.showColorWheel;
     }
 
     getWidgetWidth() {
@@ -281,9 +280,7 @@ export default class ColorSelect {
         getWindowManager().setColor(rgb);
     }
 
-    setColorByCoords(point: vec3) {
-        const localPosition = vec3.create();
-        vec3.sub(localPosition, point, this.position);
+    setColorByCoords(localPosition: vec3) {
         const colorResult = this.hsvColorAt(localPosition);
 
         const hsvColor = vec3.clone(this.hsvColor);
@@ -306,33 +303,33 @@ export default class ColorSelect {
         // do nothing
     }
 
-    handleMouseDown(e: MouseEvent) {
+    handleMouseDown(e: MouseEvent, pos: vec3) {
         this.mouseDown = true;
     }
 
-    handleMouseUp(e: MouseEvent) {
+    handleMouseUp(e: MouseEvent, pos: vec3) {
         if (this.mouseDown) {
-            this.setColorByCoords(mouseEventToVec3(e));
+            this.setColorByCoords(pos);
         }
         this.mouseDown = false;
     }
 
-    handleMouseMove(e: MouseEvent) {
+    handleMouseMove(e: MouseEvent, pos: vec3) {
         if (this.mouseDown) {
-            this.setColorByCoords(mouseEventToVec3(e));
+            this.setColorByCoords(pos);
         }
     }
 
-    handlePointerDown(e: PointerEvent) {
-        this.handleMouseDown(e);
+    handlePointerDown(e: PointerEvent, pos: vec3) {
+        this.handleMouseDown(e, pos);
     }
 
-    handlePointerUp(e: PointerEvent) {
-        this.handleMouseUp(e);
+    handlePointerUp(e: PointerEvent, pos: vec3) {
+        this.handleMouseUp(e, pos);
     }
 
-    handlePointerMove(e: PointerEvent) {
-        this.handleMouseMove(e);
+    handlePointerMove(e: PointerEvent, pos: vec3) {
+        this.handleMouseMove(e, pos);
     }
 }
 

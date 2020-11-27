@@ -1,7 +1,8 @@
 import { vec3 } from 'gl-matrix';
 
 import getWindowManager from './windowManager';
-import { DisplayType, SlateState } from './slate';
+import type { Widget } from './widget';
+import { DisplayType, AppState } from './appState';
 
 let _dirty = true;
 
@@ -35,64 +36,58 @@ const handleWheel = (e: WheelEvent) => {
 
 // TODO: abstraction layer that polyfills Pointer API
 
-const handleMouseDown = (e: MouseEvent) => {
-    const currentMousePosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(currentMousePosition);
-    if (widget) {
-        widget.handleMouseDown(e);
-    }
+const handleMouseDown = (
+    widget: Widget,
+    e: MouseEvent,
+    relativePosition: vec3
+) => {
+    widget.handleMouseDown(e, relativePosition);
 };
 
-const handleMouseUp = (e: MouseEvent) => {
-    const currentMousePosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(currentMousePosition);
-    if (widget) {
-        widget.handleMouseUp(e);
-    }
+const handleMouseUp = (
+    widget: Widget,
+    e: MouseEvent,
+    relativePosition: vec3
+) => {
+    widget.handleMouseUp(e, relativePosition);
 };
 
-const handleMouseMove = (e: MouseEvent) => {
-    const currentMousePosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(currentMousePosition);
-    if (widget) {
-        widget.handleMouseMove(e);
-    }
+const handleMouseMove = (
+    widget: Widget,
+    e: MouseEvent,
+    relativePosition: vec3
+) => {
+    widget.handleMouseMove(e, relativePosition);
 };
 
-const handlePointerDown = (e: PointerEvent) => {
+const handlePointerDown = (
+    widget: Widget,
+    e: PointerEvent,
+    relativePosition: vec3
+) => {
     if (e.pointerType === 'mouse') return; // TODO: use polyfill of some type so we can use these without mouse handlers
     e.preventDefault();
-    const currentPointerPosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(
-        currentPointerPosition
-    );
-    if (widget) {
-        widget.handlePointerDown(e);
-    }
+    widget.handlePointerDown(e, relativePosition);
 };
 
-const handlePointerUp = (e: PointerEvent) => {
+const handlePointerUp = (
+    widget: Widget,
+    e: PointerEvent,
+    relativePosition: vec3
+) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
-    const currentPointerPosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(
-        currentPointerPosition
-    );
-    if (widget) {
-        widget.handlePointerUp(e);
-    }
+    widget.handlePointerUp(e, relativePosition);
 };
 
-const handlePointerMove = (e: PointerEvent) => {
+const handlePointerMove = (
+    widget: Widget,
+    e: PointerEvent,
+    relativePosition: vec3
+) => {
     if (e.pointerType === 'mouse') return;
     e.preventDefault();
-    const currentPointerPosition = mouseEventToVec3(e);
-    const widget = getWindowManager().getWidgetAtPosition(
-        currentPointerPosition
-    );
-    if (widget) {
-        widget.handlePointerMove(e);
-    }
+    widget.handlePointerMove(e, relativePosition);
 };
 
 const handleTouchDown = (e: TouchEvent) => {
@@ -114,20 +109,43 @@ const handleTouchMove = (e: TouchEvent) => {
     // imageDisplay.handlePointerMove(currentPointerPosition, e);
 };
 
-export default function registerEventHandlers(slateState: SlateState) {
+const registerMouseRelativeHandler = (
+    msg: string,
+    fn: (w: Widget, e: Event, relativePosition: vec3) => void
+) => {
+    registerEventHandler(msg, (e: MouseEvent) => {
+        const currentMousePosition = mouseEventToVec3(e);
+        const widget = getWindowManager().getWidgetAtPosition(
+            currentMousePosition
+        );
+        if (widget) {
+            const relativePosition = vec3.create();
+            vec3.sub(relativePosition, currentMousePosition, widget.position);
+            fn(widget, e, relativePosition);
+        }
+    });
+};
+
+const mouseEventToVec3 = (e: MouseEvent) => {
+    const coord = vec3.create();
+    vec3.set(coord, e.clientX, e.clientY, 0);
+    return coord;
+}
+
+export default function registerEventHandlers(appState: AppState) {
     registerEventHandler('resize', handleResize);
     registerEventHandler('orientationchange', handleResize);
 
     registerEventHandler('wheel', handleWheel);
-    registerEventHandler('mousedown', handleMouseDown);
-    registerEventHandler('mouseup', handleMouseUp);
-    registerEventHandler('mousemove', handleMouseMove);
+    registerMouseRelativeHandler('mousedown', handleMouseDown);
+    registerMouseRelativeHandler('mouseup', handleMouseUp);
+    registerMouseRelativeHandler('mousemove', handleMouseMove);
 
     // handles Wacom tablet
 
-    registerEventHandler('pointerdown', handlePointerDown);
-    registerEventHandler('pointerup', handlePointerUp);
-    registerEventHandler('pointermove', handlePointerMove);
+    registerMouseRelativeHandler('pointerdown', handlePointerDown);
+    registerMouseRelativeHandler('pointerup', handlePointerUp);
+    registerMouseRelativeHandler('pointermove', handlePointerMove);
 
     // iOS events
 
@@ -138,19 +156,19 @@ export default function registerEventHandlers(slateState: SlateState) {
     // top bar UI
     registerEventHandler(
         'click',
-        () => (slateState.showColorWheel = !slateState.showColorWheel),
+        () => (appState.showColorWheel = !appState.showColorWheel),
         document.getElementsByClassName('brush-color')[0]
     );
 
     registerEventHandler(
         'click',
-        () => (slateState.displayType = DisplayType.Texture),
+        () => (appState.displayType = DisplayType.Texture),
         document.getElementById('2d-button')
     );
 
     registerEventHandler(
         'click',
-        () => (slateState.displayType = DisplayType.Mesh),
+        () => (appState.displayType = DisplayType.Mesh),
         document.getElementById('3d-button')
     );
 }
@@ -168,12 +186,6 @@ export function registerEventHandler(
         },
         { passive: false }
     );
-}
-
-export function mouseEventToVec3(e: MouseEvent) {
-    const coord = vec3.create();
-    vec3.set(coord, e.clientX, e.clientY, 0);
-    return coord;
 }
 
 export function markDirty() {

@@ -1,17 +1,18 @@
 import { mat4, vec3 } from 'gl-matrix';
-import getWindowManager from '../windowManager';
-import loadShaderProgram, { Shader } from '../shaders';
+import getWindowManager from '../../windowManager';
+import loadShaderProgram, { Shader } from '../../shaders';
 
-import vertImageShader from '../shaders/imageShader/vert.glsl';
-import fragImageShader from '../shaders/imageShader/frag.glsl';
+import vertImageShader from '../../shaders/imageShader/vert.glsl';
+import fragImageShader from '../../shaders/imageShader/frag.glsl';
 
-import { SCROLL_SCALE } from '../constants';
-import Brush from '../brush';
-import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
-import { markDirty, mouseEventToVec3, registerEventHandler } from '../events';
-import Mesh from '../mesh';
+import { SCROLL_SCALE } from '../../constants';
+import Brush from '../../brush';
+import { generateRectVerticesStrip, rectVerticesStripUV } from '../../primitives';
+import { markDirty, registerEventHandler } from '../../events';
+import Mesh from '../../mesh';
 
-import { DisplayType, SlateState } from '../slate';
+import { DisplayType, AppState } from '../../appState';
+import Slate from '../../slate';
 
 const eventState = {
     mouseButtonsDown: [],
@@ -30,16 +31,7 @@ vec3.set(brushColor, 0, 0, 0);
 
 export default class ImageDisplay {
     position: vec3;
-    width: number;
-    height: number;
-    buffer: Uint8ClampedArray;
 
-    history: Uint8ClampedArray[];
-    historyIndex: number;
-
-    updated: boolean;
-
-    texture: WebGLTexture;
     imagePositionBuffer: WebGLBuffer;
     imageMatrix: mat4;
     meshMatrix: mat4;
@@ -48,37 +40,22 @@ export default class ImageDisplay {
     imageUVBuffer: WebGLBuffer; // TODO: share this with all rectangles?
     brush: Brush;
 
-    slateState: SlateState;
+    appState: AppState;
 
     mesh: Mesh;
 
+    slate: Slate;
+
     // texture:
-    constructor(width: number, height: number, slateState: SlateState) {
+    constructor(width: number, height: number, appState: AppState) {
         const gl = getWindowManager().gl;
 
         this.position = vec3.create();
-        this.width = width;
-        this.height = height;
-        this.buffer = this.createLayerBuffer(true);
-
-        this.history = [];
-        this.historyIndex = 0;
-
-        this.updated = false;
-
-        this.texture = gl.createTexture();
 
         this.imagePositionBuffer = gl.createBuffer();
 
         this.imageMatrix = mat4.create();
         this.meshMatrix = mat4.create();
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
         this.imageShader = loadShaderProgram(
             gl,
@@ -96,11 +73,13 @@ export default class ImageDisplay {
             gl.STATIC_DRAW
         );
 
-        this.brush = new Brush(brushSize, brushColor, 0.4, this);
+        this.slate = new Slate(width, height);
+        this.brush = new Brush(brushSize, brushColor, 0.4, this.slate);
 
         this.mesh = null;
 
-        this.slateState = slateState;
+        this.appState = appState;
+
 
         registerEventHandler('keyup', (e: KeyboardEvent) =>
             this.handleKeyup(e)
@@ -120,16 +99,6 @@ export default class ImageDisplay {
 
     getWidgetHeight() {
         return getWindowManager().canvas.height;
-    }
-
-    createLayerBuffer(opaque: boolean) {
-        const buffer = new Uint8ClampedArray(this.width * this.height * 4);
-
-        if (opaque) {
-            buffer.fill(255);
-        }
-
-        return buffer;
     }
 
     drawTexture() {
@@ -192,7 +161,7 @@ export default class ImageDisplay {
         }
 
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.bindTexture(gl.TEXTURE_2D, this.slate.texture);
         gl.uniform1i(this.imageShader.uniforms.uSampler, 0);
 
         {
@@ -215,13 +184,9 @@ export default class ImageDisplay {
     }
 
     draw() {
-        //// update texture if necessary ////
-        if (this.updated) {
-            this._swapBuffer();
-            this.updated = false;
-        }
+        this.slate.uploadTexture();
 
-        switch (this.slateState.displayType) {
+        switch (this.appState.displayType) {
             case DisplayType.Texture:
                 this.drawTexture();
                 break;
@@ -232,63 +197,8 @@ export default class ImageDisplay {
     }
 
     setMesh(mesh: Mesh) {
-        mesh.setTexture(this.texture);
+        mesh.setTexture(this.slate.texture);
         this.mesh = mesh;
-        this.markUpdate();
-    }
-
-    load(url: string) {
-        // parse image file
-        // we have to use Canvas as an intermediary
-        const tempImg = document.createElement('img');
-
-        // TODO: probably return Promise
-
-        tempImg.addEventListener('load', () => {
-            const scratchCanvas = document.createElement('canvas');
-            scratchCanvas.width = tempImg.width;
-            scratchCanvas.height = tempImg.height;
-            const scratchContext = scratchCanvas.getContext('2d');
-            scratchContext.drawImage(tempImg, 0, 0);
-            const imageData = scratchContext.getImageData(
-                0,
-                0,
-                tempImg.width,
-                tempImg.height
-            );
-            this.buffer = imageData.data;
-            this.width = imageData.width;
-            this.height = imageData.height;
-
-            this.markUpdate();
-            this.resetImageTransform();
-            markDirty();
-        });
-        tempImg.src = url;
-    }
-
-    markUpdate() {
-        this.updated = true;
-    }
-
-    // Internal, should only be called in draw if update necessary
-    _swapBuffer() {
-        const gl = getWindowManager().gl;
-        // upload texture
-
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        const level = 0;
-        const internalFormat = gl.RGBA;
-        const srcFormat = gl.RGBA;
-        const srcType = gl.UNSIGNED_BYTE;
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            level,
-            internalFormat,
-            srcFormat,
-            srcType,
-            new ImageData(this.buffer, this.width)
-        );
     }
 
     resetImageTransform() {
@@ -299,8 +209,8 @@ export default class ImageDisplay {
         //// initialize 2d image ////
         mat4.identity(this.imageMatrix);
         mat4.translate(this.imageMatrix, this.imageMatrix, [
-            canvas.width / 2 - this.width / 2,
-            canvas.height / 2 - this.height / 2,
+            canvas.width / 2 - this.slate.width / 2,
+            canvas.height / 2 - this.slate.height / 2,
             0,
         ]);
 
@@ -308,7 +218,7 @@ export default class ImageDisplay {
         gl.bufferData(
             gl.ARRAY_BUFFER,
             new Float32Array(
-                generateRectVerticesStrip(0, 0, this.width, this.height)
+                generateRectVerticesStrip(0, 0, this.slate.width, this.slate.height)
             ),
             gl.STATIC_DRAW
         );
@@ -317,13 +227,9 @@ export default class ImageDisplay {
 
         mat4.identity(this.meshMatrix);
         mat4.translate(this.meshMatrix, this.meshMatrix, [0.0, 0.0, -6.0]);
-
-        // reset history
-        this.history = [];
-        this.historyIndex = 0;
     }
 
-    uiToImageCoordinates(uiCoord) {
+    uiToImageCoordinates(uiCoord: vec3) {
         const imageCoord = vec3.create();
         const invImageMatrix = mat4.create();
         mat4.invert(invImageMatrix, this.imageMatrix);
@@ -361,7 +267,7 @@ export default class ImageDisplay {
                 scaleFactor *= deltaY * SCROLL_SCALE;
             }
 
-            switch (this.slateState.displayType) {
+            switch (this.appState.displayType) {
                 case DisplayType.Texture:
                     // Scale with mouse as origin
                     const imageMousePos = this.uiToImageCoordinates(
@@ -426,7 +332,7 @@ export default class ImageDisplay {
         const delta = vec3.create();
         vec3.sub(delta, position, eventState.lastPanPosition);
 
-        switch (this.slateState.displayType) {
+        switch (this.appState.displayType) {
             case DisplayType.Texture:
                 let deltaMouse = this.uiToImageCoordinates(position);
                 let lastImageMousePos = this.uiToImageCoordinates(
@@ -446,7 +352,7 @@ export default class ImageDisplay {
         vec3.copy(eventState.lastPanPosition, position);
     }
 
-    handleMouseDown(e: MouseEvent) {
+    handleMouseDown(e: MouseEvent, pos: vec3) {
         eventState.mouseButtonsDown[e.button] = true;
 
         if (
@@ -454,7 +360,7 @@ export default class ImageDisplay {
             (eventState.mouseButtonsDown[0] && eventState.altKey)
         ) {
             // MMB
-            this.handlePanStart(mouseEventToVec3(e));
+            this.handlePanStart(pos);
         }
 
         if (e.button === 0) {
@@ -482,8 +388,7 @@ export default class ImageDisplay {
         }
     }
 
-    handleMouseMove(e: MouseEvent) {
-        const currentMousePosition = mouseEventToVec3(e);
+    handleMouseMove(e: MouseEvent, currentMousePosition: vec3) {
         const delta = vec3.create();
         vec3.sub(delta, currentMousePosition, eventState.lastMousePosition);
 
@@ -524,9 +429,7 @@ export default class ImageDisplay {
         eventState.pointerDown = false;
     }
 
-    handlePointerMove(e: PointerEvent) {
-        const currentPointerPosition = mouseEventToVec3(e);
-
+    handlePointerMove(e: PointerEvent, currentPointerPosition: vec3) {
         if (eventState.pointerDown) {
             const imageCoord = this.uiToImageCoordinates(
                 currentPointerPosition
@@ -536,39 +439,6 @@ export default class ImageDisplay {
 
         eventState.lastPointerPosition = currentPointerPosition;
         eventState.lastPressure = e.pressure;
-    }
-
-    // Undo history
-    checkpoint() {
-        // save image state in undo queue
-
-        this.history.length = this.historyIndex;
-
-        const currentBuffer = new Uint8ClampedArray(this.buffer);
-        this.history.push(currentBuffer);
-        this.historyIndex++;
-    }
-
-    undo() {
-        if (this.historyIndex > this.history.length) {
-            this.historyIndex = this.history.length;
-        }
-        if (this.historyIndex > 0) {
-            this.history[this.historyIndex] = new Uint8ClampedArray(
-                this.buffer
-            );
-            this.historyIndex--;
-            this.buffer = this.history[this.historyIndex];
-            this.markUpdate();
-        }
-    }
-
-    redo() {
-        if (this.historyIndex < this.history.length - 1) {
-            this.historyIndex++;
-            this.buffer = this.history[this.historyIndex];
-            this.markUpdate();
-        }
     }
 
     handleAltDown() {
@@ -598,7 +468,8 @@ export default class ImageDisplay {
 
                 if (file.type.startsWith('image')) {
                     reader.onload = (e: ProgressEvent<FileReader>) => {
-                        imageDisplay.load(<string>e.target.result);
+                        imageDisplay.slate.load(<string>e.target.result);
+                        imageDisplay.resetImageTransform();
                     };
                     reader.readAsDataURL(file);
                 } else if (file.name.endsWith('.obj')) {
@@ -629,15 +500,15 @@ export default class ImageDisplay {
         // Z
         if (e.keyCode === 90 && e.ctrlKey) {
             if (e.shiftKey) {
-                this.redo();
+                this.slate.redo();
             } else {
-                this.undo();
+                this.slate.undo();
             }
         }
 
         // R
         if (e.keyCode === 82 && e.ctrlKey) {
-            this.redo();
+            this.slate.redo();
         }
 
         if (e.key === 'Alt') {
