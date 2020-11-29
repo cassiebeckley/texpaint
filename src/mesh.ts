@@ -1,5 +1,4 @@
 import { vec3, vec2, mat4 } from 'gl-matrix';
-import getWindowManager from './windowManager';
 import loadShaderProgram, { Shader } from './shaders';
 
 import vertStandardShader from './shaders/standardShader/vert.glsl';
@@ -15,6 +14,7 @@ type Triangle = [number, number, number];
 type IndexedTriangle = [IndexedVertex, IndexedVertex, IndexedVertex];
 
 const reIndex = (
+    gl: WebGLRenderingContext,
     name: string,
     vertices: vec3[],
     normals: vec3[],
@@ -40,7 +40,7 @@ const reIndex = (
     const newIndex = {};
     let currentIndex = 0;
 
-    const mesh = new Mesh(name);
+    const mesh = new Mesh(gl, name);
 
     for (let i = 0; i < allVertices.length; i += 3) {
         const triangle: Triangle = [0, 0, 0];
@@ -64,7 +64,7 @@ const reIndex = (
         mesh.triangles.push(triangle);
     }
 
-    mesh.setBuffers();
+    mesh.setBuffers(gl);
 
     return mesh;
 };
@@ -86,6 +86,7 @@ export default class Mesh {
     texture: WebGLTexture;
 
     constructor(
+        gl: WebGLRenderingContext,
         name: string,
         vertices: vec3[] = [],
         vertexNormals: vec3[] = [],
@@ -98,7 +99,6 @@ export default class Mesh {
         this.uvs = uvs;
         this.triangles = triangles;
 
-        const gl = getWindowManager().gl;
         this.vertexBuffer = gl.createBuffer();
         this.normalBuffer = gl.createBuffer();
         this.uvBuffer = gl.createBuffer();
@@ -116,9 +116,7 @@ export default class Mesh {
         this.texture = tex;
     }
 
-    setBuffers() {
-        const gl = getWindowManager().gl;
-
+    setBuffers(gl: WebGLRenderingContext) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
         gl.bufferData(
             gl.ARRAY_BUFFER,
@@ -148,10 +146,11 @@ export default class Mesh {
         );
     }
 
-    draw(modelViewMatrix: mat4) {
-        const windowManager = getWindowManager();
-        const gl = windowManager.gl;
-
+    draw(
+        gl: WebGLRenderingContext,
+        modelViewMatrix: mat4,
+        projectionMatrix: mat4
+    ) {
         //// draw 2d image view ////
         gl.useProgram(this.standardShader.program);
 
@@ -159,7 +158,7 @@ export default class Mesh {
         gl.uniformMatrix4fv(
             this.standardShader.uniforms.uProjectionMatrix,
             false,
-            windowManager.projectionMatrix
+            projectionMatrix
         );
         gl.uniformMatrix4fv(
             this.standardShader.uniforms.uModelViewMatrix,
@@ -246,7 +245,7 @@ export default class Mesh {
         );
     }
 
-    static fromWaveformObj(obj: string): Mesh[] {
+    static fromWaveformObj(gl: WebGLRenderingContext, obj: string): Mesh[] {
         const meshes: Mesh[] = [];
 
         const vertices: vec3[] = [];
@@ -261,7 +260,7 @@ export default class Mesh {
 
         const saveMesh = () => {
             meshes.push(
-                reIndex(name, vertices, normals, uvs, indexedTriangles)
+                reIndex(gl, name, vertices, normals, uvs, indexedTriangles)
             );
 
             indexedTriangles = [];

@@ -1,0 +1,155 @@
+import { mat4, vec3 } from 'gl-matrix';
+import loadShaderProgram, { Shader } from '../shaders';
+
+import vertImageShader from '../shaders/imageShader/vert.glsl';
+import fragImageShader from '../shaders/imageShader/frag.glsl';
+
+import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
+import WindowManager from '../windowManager';
+import Slate from '../slate';
+
+export default class TextureDisplay {
+    imagePositionBuffer: WebGLBuffer;
+
+    imageShader: Shader;
+    imageUVBuffer: WebGLBuffer; // TODO: share this with all rectangles?
+
+    initGL(gl: WebGLRenderingContext) {
+        this.imagePositionBuffer = gl.createBuffer();
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(generateRectVerticesStrip(0, 0, 1, 1)),
+            gl.STATIC_DRAW
+        );
+
+        this.imageShader = loadShaderProgram(
+            gl,
+            vertImageShader,
+            fragImageShader
+        );
+
+        // TODO create texture for each layer (probably split layer into a class)
+
+        this.imageUVBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(rectVerticesStripUV),
+            gl.STATIC_DRAW
+        );
+    }
+
+    draw(
+        windowManager: WindowManager,
+        width: number,
+        height: number,
+        { scale, position }
+    ) {
+        const gl = windowManager.gl;
+
+        const modelViewMatrix = getModelViewMatrix(
+            windowManager.slate,
+            width,
+            height,
+            scale,
+            position
+        );
+
+        //// draw 2d image view ////
+        gl.useProgram(this.imageShader.program);
+
+        // set projection and model*view matrices;
+        gl.uniformMatrix4fv(
+            this.imageShader.uniforms.uProjectionMatrix,
+            false,
+            windowManager.uiProjectionMatrix
+        );
+        gl.uniformMatrix4fv(
+            this.imageShader.uniforms.uModelViewMatrix,
+            false,
+            modelViewMatrix
+        );
+
+        {
+            const size = 2;
+            const type = gl.FLOAT; // 32 bit floats
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
+            gl.vertexAttribPointer(
+                this.imageShader.attributes.aVertexPosition,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.imageShader.attributes.aVertexPosition
+            );
+        }
+
+        {
+            const size = 2;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
+            gl.vertexAttribPointer(
+                this.imageShader.attributes.aTextureCoord,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.imageShader.attributes.aTextureCoord
+            );
+        }
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, windowManager.slate.texture);
+        gl.uniform1i(this.imageShader.uniforms.uSampler, 0);
+
+        {
+            const offset = 0;
+            const count = 4;
+            gl.drawArrays(gl.TRIANGLE_STRIP, offset, count);
+        }
+    }
+}
+
+export function getModelViewMatrix(
+    slate: Slate,
+    width: number,
+    height: number,
+    scale: number,
+    position: vec3
+) {
+    const modelMatrix = mat4.create();
+    mat4.identity(modelMatrix);
+    mat4.scale(modelMatrix, modelMatrix, [slate.width, slate.height, 1]);
+
+    const currentWidth = slate.width * scale;
+    const currentHeight = slate.height * scale;
+
+    const viewMatrix = mat4.create();
+    mat4.identity(viewMatrix);
+    mat4.translate(viewMatrix, viewMatrix, [
+        width / 2 - currentWidth / 2,
+        height / 2 - currentHeight / 2,
+        0,
+    ]);
+    mat4.scale(viewMatrix, viewMatrix, [scale, scale, 1]);
+    mat4.translate(viewMatrix, viewMatrix, position);
+
+    const modelViewMatrix = mat4.create();
+    mat4.mul(modelViewMatrix, viewMatrix, modelMatrix);
+
+    return modelViewMatrix;
+}

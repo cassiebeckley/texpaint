@@ -1,0 +1,6 @@
+Store mesh triangles in BVH
+
+Raycast from camera to determine point of closest intersection
+Create bounding cube with width brushRadius * 2
+Find all triangles intersecting bounding cube (maybe clip?)
+For each texel in each triangle, find world space coordinates and run brush shade function for them

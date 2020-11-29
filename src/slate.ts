@@ -1,6 +1,3 @@
-import getWindowManager from "./windowManager";
-import { markDirty } from './events';
-
 export default class Slate {
     width: number;
     height: number;
@@ -14,9 +11,7 @@ export default class Slate {
     texture: WebGLTexture;
 
     // texture:
-    constructor(width: number, height: number) {
-        const gl = getWindowManager().gl;
-
+    constructor(gl: WebGLRenderingContext, width: number, height: number) {
         this.width = width;
         this.height = height;
         this.buffer = this.createLayerBuffer(true);
@@ -34,8 +29,6 @@ export default class Slate {
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-        // TODO create texture for each layer (probably split layer into a class)
     }
 
     private createLayerBuffer(opaque: boolean) {
@@ -73,7 +66,6 @@ export default class Slate {
 
             this.markUpdate();
             this.resetHistory();
-            markDirty();
         });
         tempImg.src = url;
     }
@@ -82,10 +74,8 @@ export default class Slate {
         this.updated = true;
     }
 
-    uploadTexture() {
+    uploadTexture(gl: WebGLRenderingContext) {
         if (!this.updated) return;
-
-        const gl = getWindowManager().gl;
         // upload texture
 
         gl.bindTexture(gl.TEXTURE_2D, this.texture);

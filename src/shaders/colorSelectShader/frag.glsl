@@ -1,14 +1,12 @@
 precision mediump float;
 
 uniform lowp vec3 uHSV;
-uniform lowp float uDisplay;
+uniform lowp float uDisplay; // TODO: remove
 
 uniform highp float uRadius;
 uniform highp float uWheelWidth;
 
 varying highp vec2 vTextureCoord;
-
-// these might one day be uniforms
 
 const highp vec2 center = vec2(0.5, 0.5);
 
@@ -26,17 +24,16 @@ lowp vec3 hsvToRgb(lowp vec3 hsv) {
 }
 
 void main() {
+    highp float smoothDelta = uRadius / 110.0;
     highp vec2 centerDisplacement = vTextureCoord - center;
     highp float centerDistance = length(centerDisplacement);
 
-    lowp float inOuterCircle = 1.0 - step(uRadius + uWheelWidth, centerDistance);
-    lowp float outsideInnerCircle = step(uRadius, centerDistance);
+    lowp float inOuterCircle = 1.0 - smoothstep(uRadius + uWheelWidth, uRadius + uWheelWidth + smoothDelta, centerDistance);
+    lowp float outsideInnerCircle = smoothstep(uRadius, uRadius + smoothDelta, centerDistance);
     lowp float inWheel = inOuterCircle * outsideInnerCircle;
 
     highp float angleFromCenter = atan(centerDisplacement.y, centerDisplacement.x);
     lowp float wheelHue = degrees(angleFromCenter) + 180.0;
-
-    lowp float hueLine = step(abs(wheelHue - uHSV.x), 1.0) * uDisplay;
 
     lowp vec3 wheelHSV = vec3(wheelHue, 1.0, 1.0);
 
@@ -55,22 +52,14 @@ void main() {
     lowp float value = triangleY / triangleHeight;
     lowp float saturation = relativeX / horizontalLineLength;
 
-    lowp float inTriangle = step(horizontalLineStart, triangleX) * (1.0 - step(horizontalLineEnd, triangleX)) * (1.0 - step(triangleHeight, triangleY));
+    lowp float inTriangle = smoothstep(horizontalLineStart, horizontalLineStart + smoothDelta, triangleX) * (1.0 - smoothstep(horizontalLineEnd, horizontalLineEnd + smoothDelta, triangleX)) * (1.0 - step(triangleHeight, triangleY));
 
-    highp float svHorizontalLineLength = triangleHeight * uHSV.z * 2.0 / sqrt(3.0);
-    highp float svHorizontalLineStart = triangleWidth / 2.0 - svHorizontalLineLength / 2.0;
-
-    highp vec2 svCoordinate = vec2(svHorizontalLineLength * uHSV.y + center.x - (horizontalLineLength / 2.0), triangleHeight * uHSV.z + center.y - uRadius);
-    lowp float svCircle = step(distance(vTextureCoord, svCoordinate), 0.01) * uDisplay;
-
-    lowp vec4 wheelRGB = vec4(hsvToRgb(wheelHSV) * inWheel * (1.0 - hueLine)* (1.0 - svCircle), inWheel);
+    lowp vec4 wheelRGB = vec4(hsvToRgb(wheelHSV) * inWheel, inWheel);
 
     lowp vec3 triangleHSV = vec3(uHSV.x, saturation, value);
-    lowp vec4 triangleRGB = vec4(hsvToRgb(triangleHSV) * inTriangle * (1.0 - svCircle), inTriangle);
+    lowp vec4 triangleRGB = vec4(hsvToRgb(triangleHSV) * inTriangle, inTriangle);
 
-    lowp vec4 background = vec4((1.0 - inTriangle) * (1.0 - inWheel) * vec3(0.5, 0.5, 0.5) * (1.0-svCircle), 1.0) * uDisplay;
-
-    gl_FragColor = wheelRGB + triangleRGB + background;
+    gl_FragColor = wheelRGB + triangleRGB;
     gl_FragColor.a = clamp(gl_FragColor.a, 0.0, 1.0);
     gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
 }

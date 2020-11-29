@@ -1,8 +1,9 @@
 import { vec3, vec4 } from 'gl-matrix';
-import { lerp } from './math';
+import { lerp, smoothstep } from './math';
 import Slate from './slate';
+import WindowManager from './windowManager';
 
-export default class Brush {
+export default class BrushEngine {
     radius: number;
     color: vec3;
     spacing: number;
@@ -11,19 +12,21 @@ export default class Brush {
     segmentStart: vec3;
     segmentStartPressure: number;
     segmentSoFar: number;
+    windowManager: WindowManager;
 
     constructor(
         diameter: number,
         color: vec3,
         spacing: number,
-        slate: Slate,
+        windowManager: WindowManager
     ) {
         const radius = diameter / 2;
         this.radius = radius;
         this.color = color;
         this.spacing = spacing;
 
-        this.slate = slate;
+        this.windowManager = windowManager;
+        this.slate = windowManager.slate;
 
         this.segmentStart = vec3.create();
         this.segmentStartPressure = 0;
@@ -71,17 +74,19 @@ export default class Brush {
 
         this.segmentStartPressure = pressure;
         vec3.copy(this.segmentStart, imageCoord);
+
+        this.windowManager.drawOnNextFrame();
     }
 
     finishStroke(imageCoord: vec3, pressure: number) {
         this.iteration(imageCoord, pressure);
+        this.windowManager.drawOnNextFrame();
     }
 
     iteration(brushCenter: vec3, pressure: number) {
         // a single dot of the brush
 
-        const factor = pressure * pressure * pressure;
-        const radius = this.radius * factor;
+        const radius = this.getRadiusForStroke(this.radius, { pressure });
 
         if (
             brushCenter[0] <= -radius ||
@@ -175,16 +180,9 @@ export default class Brush {
         this.slate.buffer[baseIndex + 2] = colorRGB[2] * 255;
         this.slate.buffer[baseIndex + 3] = 255;
     }
-}
 
-const smoothstep = (edge0: number, edge1: number, x: number) => {
-    let t = (x - edge0) / (edge1 - edge0);
-
-    if (t < 0.0) {
-        t = 0.0;
-    } else if (t > 1.0) {
-        t = 1.0;
+    getRadiusForStroke(radius: number, { pressure }) {
+        const factor = pressure * pressure;
+        return radius * factor;
     }
-
-    return t * t * (3.0 - 2.0 * t);
-};
+}
