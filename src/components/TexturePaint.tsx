@@ -130,7 +130,7 @@ export default function TexturePaint() {
         <div style={{ flexGrow: 1 }} ref={div}>
             <Widget
                 type="TextureDisplay"
-                widgetProps={{ scale, position }}
+                widgetProps={{ scale, position, drawUVMap: uv }}
                 style={{
                     height: '100%',
                     position: 'relative',

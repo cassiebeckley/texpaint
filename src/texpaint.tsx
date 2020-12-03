@@ -75,7 +75,7 @@ const BrushColor = () => {
     );
 };
 
-const TopBar = ({ on2d, on3d, setMesh }) => {
+const TopBar = ({ on2d, on3d }) => {
     const windowManager = useContext(WindowContext);
 
     const handleOpen = () => {
@@ -101,7 +101,8 @@ const TopBar = ({ on2d, on3d, setMesh }) => {
                     );
                     console.log(meshes[0]);
                     meshes[0].setTexture(windowManager.slate.texture);
-                    setMesh(meshes[0]);
+                    windowManager.mesh = meshes[0];
+                    windowManager.drawOnNextFrame();
                 };
                 reader.readAsBinaryString(file);
             } else {
@@ -129,7 +130,6 @@ const TopBar = ({ on2d, on3d, setMesh }) => {
 const App = () => {
     const [showTexture, setShowTexture] = useState(false);
     const [showMesh, setShowMesh] = useState(true);
-    const [mesh, setMesh] = useState(null);
 
     return (
         <div
@@ -139,11 +139,10 @@ const App = () => {
                 <TopBar
                     on2d={() => setShowTexture(!showTexture)}
                     on3d={() => setShowMesh(!showMesh)}
-                    setMesh={setMesh}
                 />
                 <div style={{ flexGrow: 1, display: 'flex' }}>
                     {showTexture && <TexturePaint />}
-                    {showMesh && <MeshPaint mesh={mesh} />}
+                    {showMesh && <MeshPaint />}
                 </div>
             </Renderer>
         </div>

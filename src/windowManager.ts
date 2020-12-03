@@ -1,5 +1,6 @@
 import { mat4, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
+import Mesh from './mesh';
 import Slate from './slate';
 import type Widget from './widget';
 
@@ -26,12 +27,18 @@ export default class WindowManager {
     frameRequest: number;
 
     slate: Slate; // keeping this here until I find a better home for it
+    mesh: Mesh; // and this
     brushEngine: BrushEngine; // and this as well
 
     constructor(canvas: HTMLCanvasElement, widgets: { new (): Widget }[]) {
         this.canvas = canvas;
         this.gl = canvas.getContext('webgl', { alpha: true });
         this.uiProjectionMatrix = mat4.create();
+
+        glAssertEnable(this.gl, 'OES_texture_float');
+        glAssertEnable(this.gl, 'OES_texture_float_linear');
+        glAssertEnable(this.gl, 'WEBGL_color_buffer_float');
+        glAssertEnable(this.gl, 'EXT_float_blend');
 
         this.gl.enable(this.gl.CULL_FACE);
 
@@ -77,6 +84,7 @@ export default class WindowManager {
         this.drawList = [];
 
         this.slate = new Slate(this.gl, 1024, 576);
+        this.mesh = null;
         this.brushEngine = new BrushEngine(brushSize, brushColor, 0.4, this);
     }
 
@@ -165,4 +173,12 @@ export default class WindowManager {
         this.drawList = this.drawList.filter(({ id }) => id !== cancelId);
         this.drawOnNextFrame();
     }
+}
+
+const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
+    const ext = gl.getExtension(extName);
+    if (!ext) {
+        throw new Error(`browser or GPU does not support required extension ${extName}`);
+    }
+    return ext;
 }
