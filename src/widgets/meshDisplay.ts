@@ -19,11 +19,8 @@ console.log(background);
 import vertUVShader from '../shaders/uvShader/vert.glsl';
 import fragUVShader from '../shaders/uvShader/frag.glsl';
 
-import vertBackgroundShader from '../shaders/backgroundShader/vert.glsl';
-import fragBackgroundShader from '../shaders/backgroundShader/frag.glsl';
-
-import vertCompositeShader from '../shaders/compositeShader/vert.glsl';
-import fragCompositeShader from '../shaders/compositeShader/frag.glsl';
+import vertBackgroundShader from '../shaders/workspace/backgroundShader/vert.glsl';
+import fragBackgroundShader from '../shaders/workspace/backgroundShader/frag.glsl';
 
 import { FIELD_OF_VIEW } from '../constants';
 import { parseRadianceHDR } from '../parser';
@@ -40,21 +37,9 @@ export default class MeshDisplay {
     backgroundTexture: WebGLTexture;
     backgroundShader: Shader;
 
-    compositePositionBuffer: WebGLBuffer;
-    compositeUVBuffer: WebGLBuffer;
-
-    compositeFramebuffer: WebGLFramebuffer;
-    compositeDepthBuffer: WebGLRenderbuffer;
-    compositeShader: Shader;
-
     initGL(gl: WebGLRenderingContext) {
         this.backgroundTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
         this.backgroundLoaded = false;
         loadEnvironment(background).then((hdr) => {
@@ -77,6 +62,13 @@ export default class MeshDisplay {
                 srcType,
                 hdr.pixels
             );
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
             this.backgroundLoaded = true;
         });
 
@@ -113,35 +105,6 @@ export default class MeshDisplay {
             fragBackgroundShader
         );
         this.lineShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
-
-        this.compositePositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.compositePositionBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(generateRectVerticesStrip(0, 0, 1, 1)),
-            gl.STATIC_DRAW
-        );
-
-        this.compositeUVBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.compositeUVBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(rectVerticesStripUV),
-            gl.STATIC_DRAW
-        );
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
-        this.compositeFramebuffer = gl.createFramebuffer();
-        this.compositeDepthBuffer = gl.createRenderbuffer();
-
-        this.compositeShader = loadShaderProgram(
-            gl,
-            vertCompositeShader,
-            fragCompositeShader
-        );
     }
 
     drawMainPass(
@@ -186,138 +149,17 @@ export default class MeshDisplay {
     ) {
         const gl = windowManager.gl;
 
-        const wv = gl.getParameter(gl.VIEWPORT);
-
-        const cTexture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, cTexture);
-        {
-            const level = 0;
-            const internalFormat = gl.RGBA;
-            const border = 0;
-            const format = gl.RGBA;
-            const type = gl.FLOAT;
-            const data = null;
-            gl.texImage2D(
-                gl.TEXTURE_2D,
-                level,
-                internalFormat,
-                width,
-                height,
-                border,
-                format,
-                type,
-                data
-            );
-        }
-
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.compositeFramebuffer);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,
-            gl.COLOR_ATTACHMENT0,
-            gl.TEXTURE_2D,
-            cTexture,
-            0
-        );
-
-        gl.bindRenderbuffer(gl.RENDERBUFFER, this.compositeDepthBuffer);
-        gl.renderbufferStorage(
-            gl.RENDERBUFFER,
-            gl.DEPTH_COMPONENT16,
-            width,
-            height
-        );
-        gl.framebufferRenderbuffer(
-            gl.FRAMEBUFFER,
-            gl.DEPTH_ATTACHMENT,
-            gl.RENDERBUFFER,
-            this.compositeDepthBuffer
-        );
-
-        gl.viewport(0, 0, width, height);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
         gl.clearColor(0.2, 0.1, 0.3, 1.0);
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         this.drawMainPass(gl, width, height, windowManager.mesh, widgetProps);
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        gl.useProgram(this.compositeShader.program); // set projection and model*view matrices;
-
-        const modelViewMatrix = mat4.create();
-        mat4.identity(modelViewMatrix);
-        mat4.scale(modelViewMatrix, modelViewMatrix, [width, height, 1]);
-
-        gl.uniformMatrix4fv(
-            this.compositeShader.uniforms.uProjectionMatrix,
-            false,
-            windowManager.uiProjectionMatrix
-        );
-        gl.uniformMatrix4fv(
-            this.compositeShader.uniforms.uModelViewMatrix,
-            false,
-            modelViewMatrix
-        );
-
-        {
-            const size = 2;
-            const type = gl.FLOAT; // 32 bit floats
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.compositePositionBuffer);
-            gl.vertexAttribPointer(
-                this.compositeShader.attributes.aVertexPosition,
-                size,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(
-                this.compositeShader.attributes.aVertexPosition
-            );
-        }
-
-        {
-            const size = 2;
-            const type = gl.FLOAT;
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.compositeUVBuffer);
-            gl.vertexAttribPointer(
-                this.compositeShader.attributes.aTextureCoord,
-                size,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(
-                this.compositeShader.attributes.aTextureCoord
-            );
-        }
-
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, cTexture);
-        gl.uniform1i(this.compositeShader.uniforms.uSampler, 0);
-
-        {
-            const offset = 0;
-            const count = 4;
-            gl.drawArrays(gl.TRIANGLE_STRIP, offset, count);
-        }
-
-        gl.viewport(wv[0], wv[1], wv[2], wv[3]);
-
-        gl.deleteTexture(cTexture);
     }
 
     drawBackground(

@@ -32,11 +32,11 @@ const Renderer = ({
         }
     });
 
-    useEffect(() => {
-        window.addEventListener('error', (e) => {
-            setError(e.error);
-        });
-    }, []);
+    // useEffect(() => {
+    //     window.addEventListener('error', (e) => {
+    //         setError(e.error);
+    //     });
+    // }, []);
 
     if (error) {
         return (
@@ -156,6 +156,20 @@ const App = () => {
     const [showTexture, setShowTexture] = useState(false);
     const [showMesh, setShowMesh] = useState(true);
 
+    // return <div
+    //     style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+    // >
+    //     <Renderer widgets={[ColorSelect, TextureDisplay, MeshDisplay]}>
+    //         <div style={{backgroundColor: 'rebeccapurple', color: 'white'}}>
+    //             hey there
+    //         </div>
+    //         {/* <TopBar
+    //             on2d={() => setShowTexture(!showTexture)}
+    //             on3d={() => setShowMesh(!showMesh)}
+    //         /> */}
+    //     </Renderer>
+    // </div>;
+
     return (
         <div
             style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
@@ -176,4 +190,8 @@ const App = () => {
 
 window.addEventListener('load', () => {
     ReactDOM.render(<App />, document.getElementById('container'));
+});
+
+window.addEventListener('error', (e) => {
+    document.body.innerHTML = `<div style="background-color: white; font-size: 20px;">ERROR: <pre>${e.error}</pre></div>`;
 });

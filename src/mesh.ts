@@ -1,8 +1,8 @@
 import { vec3, vec2, mat4 } from 'gl-matrix';
 import loadShaderProgram, { Shader } from './shaders';
 
-import vertStandardShader from './shaders/standardShader/vert.glsl';
-import fragStandardShader from './shaders/standardShader/frag.glsl';
+import vertStandardShader from './shaders/workspace/standardShader/vert.glsl';
+import fragStandardShader from './shaders/workspace/standardShader/frag.glsl';
 
 import vertUVShader from './shaders/uvShader/vert.glsl';
 import fragUVShader from './shaders/uvShader/frag.glsl';

@@ -36,9 +36,6 @@ export default class WindowManager {
         this.uiProjectionMatrix = mat4.create();
 
         glAssertEnable(this.gl, 'OES_texture_float');
-        glAssertEnable(this.gl, 'OES_texture_float_linear');
-        glAssertEnable(this.gl, 'WEBGL_color_buffer_float');
-        glAssertEnable(this.gl, 'EXT_float_blend');
 
         this.gl.enable(this.gl.CULL_FACE);
 

@@ -4,6 +4,8 @@ varying vec3 vPosition;
 
 uniform sampler2D uSampler;
 
+#pragma glslify: tonemap = require(../../tonemap.glsl)
+
 #define PI 3.1415926538
 
 vec4 equirectangular(sampler2D tex, vec3 direction) {
@@ -20,6 +22,6 @@ void main() {
 
     vec3 color = equirectangular(uSampler, direction).rgb;
 
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(tonemap(color), 1.0);
     gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
 }

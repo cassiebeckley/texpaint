@@ -10,6 +10,8 @@ const highp vec3 lightDir = normalize(vec3(1.0, 0.8, 0.1));
 const vec3 lightColor = vec3(0.8, 0.8, 0.8);
 const vec3 ambient = vec3(0.2, 0.2, 0.2);
 
+#pragma glslify: tonemap = require(../../tonemap.glsl)
+
 #define PI 3.1415926538
 
 vec4 equirectangular(sampler2D tex, vec3 direction) {
@@ -47,7 +49,7 @@ void main() {
 
     diffuse /= float(cbrt_samples * cbrt_samples * cbrt_samples);
 
-    gl_FragColor.rgb = color * light + color * ambient;
-    gl_FragColor.rgb = color * diffuse;
+    // gl_FragColor.rgb = color * light + color * ambient;
+    gl_FragColor.rgb = tonemap(color * diffuse);
     gl_FragColor.a = 1.0;
 }
