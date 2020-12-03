@@ -1,7 +1,13 @@
 import { mat3, mat4, quat, vec3, vec4 } from 'gl-matrix';
 import * as React from 'react';
 import { useContext, useRef, useState } from 'react';
-import { FAR, FIELD_OF_VIEW, NEAR, ROTATE_SENSITIVITY, SCROLL_SCALE } from '../constants';
+import {
+    FAR,
+    FIELD_OF_VIEW,
+    NEAR,
+    ROTATE_SENSITIVITY,
+    SCROLL_SCALE,
+} from '../constants';
 import { normalizeWheelEvent } from '../utils';
 import { getProjection, getView } from '../widgets/meshDisplay';
 import Widget, { WindowContext } from './Widget';
@@ -149,14 +155,20 @@ export default function MeshPaint({}) {
 
         const ndcX = ((coords[0] + 0.5) / widgetBounds.width) * 2 - 1;
         const ndcY = -(((coords[1] + 0.5) / widgetBounds.height) * 2 - 1);
-        
+
         const camOrigin = vec3.create();
         vec3.set(camOrigin, ndcX, ndcY, -1);
         vec3.scale(camOrigin, camOrigin, NEAR);
         vec3.transformMat4(camOrigin, camOrigin, invProjView);
 
         const rayBase = vec4.create();
-        vec4.set(rayBase, ndcX * (FAR - NEAR), ndcY * (FAR - NEAR), FAR + NEAR, FAR - NEAR);
+        vec4.set(
+            rayBase,
+            ndcX * (FAR - NEAR),
+            ndcY * (FAR - NEAR),
+            FAR + NEAR,
+            FAR - NEAR
+        );
         vec4.transformMat4(rayBase, rayBase, invProjView);
 
         const camDirection = vec3.create();
@@ -192,7 +204,12 @@ export default function MeshPaint({}) {
         <div style={{ flexGrow: 1 }} ref={div}>
             <Widget
                 type="MeshDisplay"
-                widgetProps={{ position, rotation, scale, brushCursor: paintPoint }}
+                widgetProps={{
+                    position,
+                    rotation,
+                    scale,
+                    brushCursor: paintPoint,
+                }}
                 style={{ height: '100%', cursor }}
                 onWheel={handleWheel}
                 onPointerDown={handlePointerDown}

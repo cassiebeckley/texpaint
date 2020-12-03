@@ -121,11 +121,7 @@ export default class Mesh {
             fragStandardShader
         );
 
-        this.uvShader = loadShaderProgram(
-            gl,
-            vertUVShader,
-            fragUVShader
-        );
+        this.uvShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
     }
 
     setTexture(tex: WebGLTexture) {
@@ -190,7 +186,7 @@ export default class Mesh {
         gl: WebGLRenderingContext,
         modelViewMatrix: mat4,
         projectionMatrix: mat4,
-        lighting: WebGLTexture,
+        lighting: WebGLTexture
     ) {
         gl.useProgram(this.standardShader.program);
 
@@ -291,7 +287,11 @@ export default class Mesh {
         );
     }
 
-    drawUV(gl: WebGLRenderingContext, modelViewMatrix: mat4, uiProjectionMatrix: mat4) {
+    drawUV(
+        gl: WebGLRenderingContext,
+        modelViewMatrix: mat4,
+        uiProjectionMatrix: mat4
+    ) {
         gl.useProgram(this.uvShader.program);
 
         // set projection and model*view matrices;
@@ -328,11 +328,7 @@ export default class Mesh {
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
 
-        gl.drawArrays(
-            gl.LINES,
-            0,
-            this.uvLineCount
-        );
+        gl.drawArrays(gl.LINES, 0, this.uvLineCount);
     }
 
     static fromWaveformObj(gl: WebGLRenderingContext, obj: string): Mesh[] {
@@ -450,7 +446,14 @@ export default class Mesh {
         for (let i = 0; i < this.triangles.length; i++) {
             const triangle = this.triangles[i];
 
-            const intersection = rayTriangleIntersection(currentPoint, origin, direction, this.vertices[triangle[0]], this.vertices[triangle[1]], this.vertices[triangle[2]]);
+            const intersection = rayTriangleIntersection(
+                currentPoint,
+                origin,
+                direction,
+                this.vertices[triangle[0]],
+                this.vertices[triangle[1]],
+                this.vertices[triangle[2]]
+            );
             if (intersection > 0 && intersection < closest) {
                 closest = intersection;
                 vec3.copy(closestPoint, currentPoint);
@@ -466,7 +469,14 @@ export default class Mesh {
     }
 }
 
-const rayTriangleIntersection = (point: vec3, origin: vec3, direction: vec3, v0: vec3, v1: vec3, v2: vec3) => {
+const rayTriangleIntersection = (
+    point: vec3,
+    origin: vec3,
+    direction: vec3,
+    v0: vec3,
+    v1: vec3,
+    v2: vec3
+) => {
     const v0v1 = vec3.create();
     const v0v2 = vec3.create();
 
@@ -490,7 +500,7 @@ const rayTriangleIntersection = (point: vec3, origin: vec3, direction: vec3, v0:
     }
 
     vec3.zero(point);
-    vec3.scale(point, direction, t)
+    vec3.scale(point, direction, t);
     vec3.add(point, point, origin);
 
     const edge0 = vec3.create();
@@ -501,7 +511,7 @@ const rayTriangleIntersection = (point: vec3, origin: vec3, direction: vec3, v0:
 
     const C = vec3.create();
     vec3.cross(C, edge0, vp0);
-    
+
     if (vec3.dot(normal, C) < 0) {
         return Infinity;
     }
@@ -512,7 +522,7 @@ const rayTriangleIntersection = (point: vec3, origin: vec3, direction: vec3, v0:
     const vp1 = vec3.create();
     vec3.sub(vp1, point, v1);
     vec3.cross(C, edge1, vp1);
-    
+
     if (vec3.dot(normal, C) < 0) {
         return Infinity;
     }
@@ -523,14 +533,13 @@ const rayTriangleIntersection = (point: vec3, origin: vec3, direction: vec3, v0:
     const vp2 = vec3.create();
     vec3.sub(vp2, point, v0);
     vec3.cross(C, edge2, vp2);
-    
+
     if (vec3.dot(normal, C) < 0) {
         return Infinity;
     }
 
     return t;
-}
-
+};
 
 // const rayTriangleIntersection = (origin: vec3, direction: vec3, v0: vec3, v1: vec3, v2: vec3): number => {
 //     console.log('ray-triangle check:', origin, direction, v0, v1, v2);

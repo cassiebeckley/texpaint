@@ -38702,9 +38702,10 @@ gl_matrix_1.vec3.set(brushColor, 0, 0, 0);
 var WindowManager =
 /** @class */
 function () {
-  function WindowManager(canvas, widgets) {
+  function WindowManager(canvas, widgets, errorHandler) {
     var _this = this;
 
+    this.errorHandler = errorHandler;
     this.canvas = canvas;
     this.gl = canvas.getContext('webgl', {
       alpha: true
@@ -38769,21 +38770,25 @@ function () {
   };
 
   WindowManager.prototype.draw = function () {
-    this.viewportToWindow();
-    this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
-    this.gl.clearDepth(1.0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-    this.slate.uploadTexture(this.gl);
+    try {
+      this.viewportToWindow();
+      this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
+      this.gl.clearDepth(1.0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+      this.slate.uploadTexture(this.gl);
 
-    for (var i = 0; i < this.drawList.length; i++) {
-      var _a = this.drawList[i],
-          widget = _a.widget,
-          position = _a.position,
-          width = _a.width,
-          height = _a.height,
-          widgetProps = _a.widgetProps;
-      this.setViewport(position[0], position[1], width, height);
-      widget.draw(this, width, height, widgetProps);
+      for (var i = 0; i < this.drawList.length; i++) {
+        var _a = this.drawList[i],
+            widget = _a.widget,
+            position = _a.position,
+            width = _a.width,
+            height = _a.height,
+            widgetProps = _a.widgetProps;
+        this.setViewport(position[0], position[1], width, height);
+        widget.draw(this, width, height, widgetProps);
+      }
+    } catch (e) {
+      this.errorHandler(e);
     }
   };
 
@@ -40914,19 +40919,36 @@ var meshDisplay_1 = __importDefault(require("./widgets/meshDisplay"));
 var Renderer = function Renderer(_a) {
   var widgets = _a.widgets,
       children = _a.children;
-  var canvas = react_1.useRef(null);
 
   var _b = react_1.useState(null),
-      windowManager = _b[0],
-      setWindowManager = _b[1];
+      error = _b[0],
+      setError = _b[1];
+
+  var canvas = react_1.useRef(null);
+
+  var _c = react_1.useState(null),
+      windowManager = _c[0],
+      setWindowManager = _c[1];
 
   react_1.useEffect(function () {
     if (windowManager === null) {
-      setWindowManager(new windowManager_1.default(canvas.current, widgets));
+      setWindowManager(new windowManager_1.default(canvas.current, widgets, setError));
     } else {
       windowManager.draw();
     }
   });
+
+  if (error) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        backgroundColor: 'white',
+        margin: '5px',
+        border: '2px solid red',
+        padding: '20px'
+      }
+    }, "Error during rendering:", /*#__PURE__*/React.createElement("pre", null, error.name, ": ", error.message + '\n' + error.stack));
+  }
+
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Widget_1.WindowContext.Provider, {
     value: windowManager
   }, windowManager ? children : 'GL not yet started'), /*#__PURE__*/React.createElement("canvas", {

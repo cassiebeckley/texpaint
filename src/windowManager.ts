@@ -14,6 +14,8 @@ export default class WindowManager {
     widgets: { [name: string]: Widget };
     uiProjectionMatrix: mat4;
 
+    errorHandler: (e: Error) => void;
+
     drawId: number;
     drawList: {
         widget: Widget;
@@ -30,7 +32,13 @@ export default class WindowManager {
     mesh: Mesh; // and this
     brushEngine: BrushEngine; // and this as well
 
-    constructor(canvas: HTMLCanvasElement, widgets: { new (): Widget }[]) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        widgets: { new (): Widget }[],
+        errorHandler: (e: Error) => void
+    ) {
+        this.errorHandler = errorHandler;
+
         this.canvas = canvas;
         this.gl = canvas.getContext('webgl', { alpha: true });
         this.uiProjectionMatrix = mat4.create();
@@ -112,24 +120,28 @@ export default class WindowManager {
     }
 
     draw() {
-        this.viewportToWindow();
+        try {
+            this.viewportToWindow();
 
-        this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        this.gl.clearDepth(1.0);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+            this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
+            this.gl.clearDepth(1.0);
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-        this.slate.uploadTexture(this.gl);
+            this.slate.uploadTexture(this.gl);
 
-        for (let i = 0; i < this.drawList.length; i++) {
-            const {
-                widget,
-                position,
-                width,
-                height,
-                widgetProps,
-            } = this.drawList[i];
-            this.setViewport(position[0], position[1], width, height);
-            widget.draw(this, width, height, widgetProps);
+            for (let i = 0; i < this.drawList.length; i++) {
+                const {
+                    widget,
+                    position,
+                    width,
+                    height,
+                    widgetProps,
+                } = this.drawList[i];
+                this.setViewport(position[0], position[1], width, height);
+                widget.draw(this, width, height, widgetProps);
+            }
+        } catch (e) {
+            this.errorHandler(e);
         }
     }
 
@@ -178,7 +190,9 @@ export default class WindowManager {
 const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
     const ext = gl.getExtension(extName);
     if (!ext) {
-        throw new Error(`browser or GPU does not support required extension ${extName}`);
+        throw new Error(
+            `browser or GPU does not support required extension ${extName}`
+        );
     }
     return ext;
-}
+};

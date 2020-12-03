@@ -1,44 +1,55 @@
 type ParseResult<T> = [T, number];
 
-type Chromaticity = { hue: number, colorfulness: number };
+type Chromaticity = { hue: number; colorfulness: number };
 
 enum RadianceHDRFormat {
     RGBE,
-    XYZE
+    XYZE,
 }
 
 type RadianceHDR = {
-    format: RadianceHDRFormat,
-    software?: string,
-    pixaspect?: number,
-    primaries?: { red: Chromaticity, green: Chromaticity, blue: Chromaticity, white: Chromaticity },
-    exposure?: number,
-    gamma?: number,
-    width: number,
-    height: number,
-    pixels: Float32Array,
+    format: RadianceHDRFormat;
+    software?: string;
+    pixaspect?: number;
+    primaries?: {
+        red: Chromaticity;
+        green: Chromaticity;
+        blue: Chromaticity;
+        white: Chromaticity;
+    };
+    exposure?: number;
+    gamma?: number;
+    width: number;
+    height: number;
+    pixels: Float32Array;
 };
 
-const readLine = async (data: Uint8Array, index: number): Promise<ParseResult<string>> => {
+const readLine = async (
+    data: Uint8Array,
+    index: number
+): Promise<ParseResult<string>> => {
     const line = [];
 
     let done = false;
     while (!done && index < data.length) {
         const c = data[index++];
-        if (c === 10) { // newline
+        if (c === 10) {
+            // newline
             done = true;
         } else {
             line.push(String.fromCharCode(c));
         }
     }
 
-    return [
-        line.join(''),
-        index
-    ];
+    return [line.join(''), index];
 };
 
-const getPixel = (r: number, g: number, b: number, e: number): [number, number, number] => {
+const getPixel = (
+    r: number,
+    g: number,
+    b: number,
+    e: number
+): [number, number, number] => {
     const signed_exponent = e - 128;
 
     let multiplier: number;
@@ -55,7 +66,9 @@ const getPixel = (r: number, g: number, b: number, e: number): [number, number, 
 };
 
 // maybe make this a streaming parser at some point
-export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR> {
+export async function parseRadianceHDR(
+    buffer: ArrayBuffer
+): Promise<RadianceHDR> {
     const data = new Uint8Array(buffer);
     const hdr: RadianceHDR = {
         format: RadianceHDRFormat.RGBE,
@@ -78,7 +91,7 @@ export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR
 
         const [key, value] = line.split('=');
 
-        switch(key) {
+        switch (key) {
             case 'FORMAT':
                 switch (value) {
                     case '32-bit_rle_rgbe':
@@ -100,13 +113,15 @@ export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR
                 hdr.pixaspect = Number.parseFloat(value);
                 break;
             case 'PRIMARIES':
-                const values = value.split(' ').map(v => Number.parseFloat(v));
+                const values = value
+                    .split(' ')
+                    .map((v) => Number.parseFloat(v));
                 hdr.primaries = {
-                    red: { hue: values[0], colorfulness: values[1], },
-                    green: { hue: values[2], colorfulness: values[3], },
-                    blue: { hue: values[4], colorfulness: values[5], },
-                    white: { hue: values[6], colorfulness: values[7], },
-                }
+                    red: { hue: values[0], colorfulness: values[1] },
+                    green: { hue: values[2], colorfulness: values[3] },
+                    blue: { hue: values[4], colorfulness: values[5] },
+                    white: { hue: values[6], colorfulness: values[7] },
+                };
                 break;
             case 'EXPOSURE':
                 hdr.exposure = Number.parseFloat(value);
@@ -132,8 +147,8 @@ export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR
         throw new Error('scanline ordering not supported yet');
     }
 
-    const width = hdr.width = Number.parseInt(w);
-    const height = hdr.height = Number.parseInt(h);
+    const width = (hdr.width = Number.parseInt(w));
+    const height = (hdr.height = Number.parseInt(h));
 
     hdr.pixels = new Float32Array(width * height * 3);
     let pixelsCount = 0;
@@ -150,16 +165,18 @@ export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR
 
             index += 2;
 
-            const scanlineLength = data[index] << 8 | data[index + 1];
+            const scanlineLength = (data[index] << 8) | data[index + 1];
             index += 2;
 
             // console.log('scanline length:', scanlineLength);
 
-            const componentArrays = [null, null, null, null].map(v => new Uint8Array(scanlineLength));
+            const componentArrays = [null, null, null, null].map(
+                (v) => new Uint8Array(scanlineLength)
+            );
 
             for (let i = 0; i < 4; i++) {
                 // console.log('component:', i);
-                for (let j = 0; j < scanlineLength;) {
+                for (let j = 0; j < scanlineLength; ) {
                     let count = data[index++];
                     const run = count > 128;
 
@@ -187,7 +204,12 @@ export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR
             }
 
             for (let i = 0; i < scanlineLength; i++) {
-                const [r, g, b, e] = [componentArrays[0][i], componentArrays[1][i], componentArrays[2][i], componentArrays[3][i]];
+                const [r, g, b, e] = [
+                    componentArrays[0][i],
+                    componentArrays[1][i],
+                    componentArrays[2][i],
+                    componentArrays[3][i],
+                ];
 
                 const pixel = getPixel(r, g, b, e);
 
@@ -202,24 +224,27 @@ export async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR
         for (; index < data.length; index += 4) {
             const [r, g, b, e] = data.slice(index, index + 4);
 
-            if (r === g && g === b && b === 1) { // old RLE
+            if (r === g && g === b && b === 1) {
+                // old RLE
                 for (let j = 0; j < e; j++) {
-                    hdr.pixels[pixelsCount++] = (previous[0]);
-                    hdr.pixels[pixelsCount++] = (previous[1]);
-                    hdr.pixels[pixelsCount++] = (previous[2]);
+                    hdr.pixels[pixelsCount++] = previous[0];
+                    hdr.pixels[pixelsCount++] = previous[1];
+                    hdr.pixels[pixelsCount++] = previous[2];
                 }
             } else {
                 previous = getPixel(r, g, b, e);
 
-                hdr.pixels[pixelsCount++] = (previous[0]);
-                hdr.pixels[pixelsCount++] = (previous[1]);
-                hdr.pixels[pixelsCount++] = (previous[2]);
+                hdr.pixels[pixelsCount++] = previous[0];
+                hdr.pixels[pixelsCount++] = previous[1];
+                hdr.pixels[pixelsCount++] = previous[2];
             }
         }
     }
 
     if (pixelsCount !== hdr.pixels.length) {
-        throw new Error(`missing pixel data: read ${pixelsCount} pixels but expecting ${width} * ${height} * 3 = ${hdr.pixels.length}}`);
+        throw new Error(
+            `missing pixel data: read ${pixelsCount} pixels but expecting ${width} * ${height} * 3 = ${hdr.pixels.length}}`
+        );
     }
 
     console.log(hdr);

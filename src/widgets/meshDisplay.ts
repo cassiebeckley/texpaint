@@ -1,5 +1,11 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
-import { CUBE_INDICES, CUBE_LINE_INDICES, CUBE_VERTICES, generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
+import {
+    CUBE_INDICES,
+    CUBE_LINE_INDICES,
+    CUBE_VERTICES,
+    generateRectVerticesStrip,
+    rectVerticesStripUV,
+} from '../primitives';
 import WindowManager from '../windowManager';
 
 import loadShaderProgram, { Shader } from '../shaders';
@@ -51,29 +57,28 @@ export default class MeshDisplay {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
         this.backgroundLoaded = false;
-        loadEnvironment(background)
-            .then(hdr => {
-                console.log('loaded background'); // TODO: redraw on load
+        loadEnvironment(background).then((hdr) => {
+            console.log('loaded background'); // TODO: redraw on load
 
-                gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
-                const level = 0;
-                const internalFormat = gl.RGB;
-                const srcFormat = gl.RGB;
-                const srcType = gl.FLOAT;
-                const border = 0;
-                gl.texImage2D(
-                    gl.TEXTURE_2D,
-                    level,
-                    internalFormat,
-                    hdr.width,
-                    hdr.height,
-                    border,
-                    srcFormat,
-                    srcType,
-                    hdr.pixels
-                );
-                this.backgroundLoaded = true;
-            });
+            gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
+            const level = 0;
+            const internalFormat = gl.RGB;
+            const srcFormat = gl.RGB;
+            const srcType = gl.FLOAT;
+            const border = 0;
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                level,
+                internalFormat,
+                hdr.width,
+                hdr.height,
+                border,
+                srcFormat,
+                srcType,
+                hdr.pixels
+            );
+            this.backgroundLoaded = true;
+        });
 
         this.cubeBuffer = gl.createBuffer();
 
@@ -102,7 +107,11 @@ export default class MeshDisplay {
             gl.STATIC_DRAW
         );
 
-        this.backgroundShader = loadShaderProgram(gl, vertBackgroundShader, fragBackgroundShader);
+        this.backgroundShader = loadShaderProgram(
+            gl,
+            vertBackgroundShader,
+            fragBackgroundShader
+        );
         this.lineShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
 
         this.compositePositionBuffer = gl.createBuffer();
@@ -128,10 +137,20 @@ export default class MeshDisplay {
         this.compositeFramebuffer = gl.createFramebuffer();
         this.compositeDepthBuffer = gl.createRenderbuffer();
 
-        this.compositeShader = loadShaderProgram(gl, vertCompositeShader, fragCompositeShader);
+        this.compositeShader = loadShaderProgram(
+            gl,
+            vertCompositeShader,
+            fragCompositeShader
+        );
     }
 
-    drawMainPass(gl: WebGLRenderingContext, width: number, height: number, mesh: Mesh, { position, rotation, scale, brushCursor }) {
+    drawMainPass(
+        gl: WebGLRenderingContext,
+        width: number,
+        height: number,
+        mesh: Mesh,
+        { position, rotation, scale, brushCursor }
+    ) {
         gl.enable(gl.DEPTH_TEST);
 
         const view = mat4.create();
@@ -178,9 +197,17 @@ export default class MeshDisplay {
             const format = gl.RGBA;
             const type = gl.FLOAT;
             const data = null;
-            gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
-                            width, height, border,
-                            format, type, data);
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                level,
+                internalFormat,
+                width,
+                height,
+                border,
+                format,
+                type,
+                data
+            );
         }
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -189,23 +216,39 @@ export default class MeshDisplay {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.compositeFramebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, cTexture, 0);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            cTexture,
+            0
+        );
 
         gl.bindRenderbuffer(gl.RENDERBUFFER, this.compositeDepthBuffer);
-        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
-        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.compositeDepthBuffer);
+        gl.renderbufferStorage(
+            gl.RENDERBUFFER,
+            gl.DEPTH_COMPONENT16,
+            width,
+            height
+        );
+        gl.framebufferRenderbuffer(
+            gl.FRAMEBUFFER,
+            gl.DEPTH_ATTACHMENT,
+            gl.RENDERBUFFER,
+            this.compositeDepthBuffer
+        );
 
         gl.viewport(0, 0, width, height);
 
         gl.clearColor(0.2, 0.1, 0.3, 1.0);
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        
+
         this.drawMainPass(gl, width, height, windowManager.mesh, widgetProps);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        gl.useProgram(this.compositeShader.program);// set projection and model*view matrices;
+        gl.useProgram(this.compositeShader.program); // set projection and model*view matrices;
 
         const modelViewMatrix = mat4.create();
         mat4.identity(modelViewMatrix);
@@ -277,14 +320,22 @@ export default class MeshDisplay {
         gl.deleteTexture(cTexture);
     }
 
-    drawBackground(gl: WebGLRenderingContext, rotation: quat, projectionMatrix: mat4) {
+    drawBackground(
+        gl: WebGLRenderingContext,
+        rotation: quat,
+        projectionMatrix: mat4
+    ) {
         gl.disable(gl.CULL_FACE);
         gl.useProgram(this.backgroundShader.program);
 
         const modelMatrix = mat4.create();
         mat4.identity(modelMatrix);
         const backgroundScale = 50;
-        mat4.scale(modelMatrix, modelMatrix, [backgroundScale, backgroundScale, backgroundScale]);
+        mat4.scale(modelMatrix, modelMatrix, [
+            backgroundScale,
+            backgroundScale,
+            backgroundScale,
+        ]);
 
         const viewMatrix = mat4.create();
         mat4.fromQuat(viewMatrix, rotation);
@@ -340,7 +391,13 @@ export default class MeshDisplay {
         gl.enable(gl.CULL_FACE);
     }
 
-    drawCube(gl: WebGLRenderingContext, viewMatrix: mat4, projectionMatrix: mat4, position: vec3, brushRadius: number) {
+    drawCube(
+        gl: WebGLRenderingContext,
+        viewMatrix: mat4,
+        projectionMatrix: mat4,
+        position: vec3,
+        brushRadius: number
+    ) {
         gl.disable(gl.CULL_FACE);
         gl.useProgram(this.lineShader.program);
 
@@ -348,7 +405,11 @@ export default class MeshDisplay {
         mat4.identity(modelMatrix);
         mat4.translate(modelMatrix, modelMatrix, position);
         brushRadius *= 0.1;
-        mat4.scale(modelMatrix, modelMatrix, [brushRadius, brushRadius, brushRadius]);
+        mat4.scale(modelMatrix, modelMatrix, [
+            brushRadius,
+            brushRadius,
+            brushRadius,
+        ]);
 
         const modelViewMatrix = mat4.create();
         mat4.mul(modelViewMatrix, viewMatrix, modelMatrix);
@@ -394,7 +455,6 @@ export default class MeshDisplay {
             0
         );
 
-        
         gl.enable(gl.CULL_FACE);
     }
 }
@@ -402,7 +462,12 @@ export default class MeshDisplay {
 const INITIAL_TRANSLATION = vec3.create();
 vec3.set(INITIAL_TRANSLATION, 0, 0, -6);
 
-export function getView(out: mat4, position: vec3, rotation: quat, scale: number) {
+export function getView(
+    out: mat4,
+    position: vec3,
+    rotation: quat,
+    scale: number
+) {
     mat4.identity(out);
 
     const translation = vec3.create();
@@ -419,13 +484,7 @@ export function getView(out: mat4, position: vec3, rotation: quat, scale: number
 }
 
 export function getProjection(out: mat4, width: number, height: number) {
-    mat4.perspective(
-        out,
-        FIELD_OF_VIEW,
-        width / height,
-        0.1,
-        100.0
-    );
+    mat4.perspective(out, FIELD_OF_VIEW, width / height, 0.1, 100.0);
 }
 
 const loadEnvironment = async (background: string) => {

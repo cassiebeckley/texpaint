@@ -20,16 +20,37 @@ const Renderer = ({
     widgets: (new () => Widget)[];
     children: any;
 }) => {
+    const [error, setError] = useState(null);
     const canvas = useRef(null);
     const [windowManager, setWindowManager] = useState(null);
 
     useEffect(() => {
         if (windowManager === null) {
-            setWindowManager(new WindowManager(canvas.current, widgets));
+            setWindowManager(
+                new WindowManager(canvas.current, widgets, setError)
+            );
         } else {
             windowManager.draw();
         }
     });
+
+    if (error) {
+        return (
+            <div
+                style={{
+                    backgroundColor: 'white',
+                    margin: '5px',
+                    border: '2px solid red',
+                    padding: '20px',
+                }}
+            >
+                Error during rendering:
+                <pre>
+                    {error.name}: {error.message + '\n' + error.stack}
+                </pre>
+            </div>
+        );
+    }
 
     return (
         <>
