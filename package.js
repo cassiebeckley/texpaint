@@ -38,7 +38,7 @@ const removeOutputDirectory = () => {
         const options = {
             outDir,
             watch: false,
-            publicUrl: '/',
+            publicUrl: '/texpaint/',
             minify: true,
         };
 
