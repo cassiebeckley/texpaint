@@ -26,13 +26,17 @@ const Renderer = ({
 
     useEffect(() => {
         if (windowManager === null) {
-            setWindowManager(
-                new WindowManager(canvas.current, widgets, setError)
-            );
+            setWindowManager(new WindowManager(canvas.current, widgets));
         } else {
             windowManager.draw();
         }
     });
+
+    useEffect(() => {
+        window.addEventListener('error', (e) => {
+            setError(e.error);
+        });
+    }, []);
 
     if (error) {
         return (
