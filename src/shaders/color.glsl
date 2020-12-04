@@ -25,11 +25,25 @@ vec3 RRTAndODTFit(vec3 v) {
     return a / b;
 }
 
-vec3 tonemap(vec3 hdrColor) {
-    const float gamma = 2.2;
+vec3 rgb_to_srgb(vec3 rgb) {
+    bvec3 cutoff = lessThan(rgb, vec3(0.0031308));
+    vec3 higher = vec3(1.055)*pow(rgb, vec3(1.0/2.4)) - vec3(0.055);
+    vec3 lower = rgb * vec3(12.92);
 
-    // TODO: update the input matrix above to work on RGB
-    vec3 sRgb = pow(hdrColor, vec3(1.0 / gamma));
+    return mix(higher, lower, vec3(cutoff));
+}
+
+vec3 srgb_to_rgb(vec3 srgb)
+{
+    bvec3 cutoff = lessThan(srgb, vec3(0.04045));
+    vec3 higher = pow((srgb + vec3(0.055))/vec3(1.055), vec3(2.4));
+    vec3 lower = srgb/vec3(12.92);
+
+    return mix(higher, lower, vec3(cutoff));
+}
+
+vec3 tonemap(vec3 hdrColor) {
+    vec3 sRgb = rgb_to_srgb(hdrColor);
 
     vec3 color = ACESInput * sRgb;
     
@@ -40,5 +54,3 @@ vec3 tonemap(vec3 hdrColor) {
     // return color;
     return clamp(color, 0.0, 1.0);
 }
-
-#pragma glslify: export(tonemap)

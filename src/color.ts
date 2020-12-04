@@ -58,3 +58,15 @@ export function rgbToHsv(rgb: vec3) {
 
     return hsv;
 }
+
+
+// Implement IEC 61966-2-1:1999
+
+// defined for floating point colors (range of [0.0, 1.0] for SDR values)
+export function srgbToRgb(u: number): number {
+    if (u <= 0.04045) {
+        return u / 12.92;
+    } else {
+        return Math.pow((u + 0.055) / 1.055, 2.4);
+    }
+}

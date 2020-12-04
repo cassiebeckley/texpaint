@@ -1,4 +1,4 @@
-#pragma glslify: tonemap = require(../../tonemap)
+#pragma glslify: import(../../color)
 
 precision mediump float;
 
@@ -16,8 +16,6 @@ const float backgroundStrength = 1.0; // this probably makes more sense as a sha
 
 #define PI 3.1415926538
 
-const float gamma = 2.2;
-
 vec4 equirectangular(sampler2D tex, vec3 direction) {
     float x = (1.0 + atan(direction.z, direction.x) / PI) / 2.0;
     float y = acos(direction.y) / PI;
@@ -29,7 +27,7 @@ void main() {
     vec2 coord = vTextureCoord;
     coord.y = 1.0 - coord.y; // TODO: figure out if this should be done in the loader
 
-    vec3 albedo = pow(texture2D(uSampler, coord).rgb, vec3(gamma)); // convert from sRGB to linear space
+    vec3 albedo = texture2D(uSampler, coord).rgb;
 
     highp vec3 normal = normalize(vVertexNormal);
     float luminance = clamp(dot(normal, lightDir), 0.0, 1.0);

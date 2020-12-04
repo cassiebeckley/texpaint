@@ -1,3 +1,8 @@
+// At the moment this represents a single-layer, editable image
+// We're going to want everything to work in a linear space internally
+
+import { srgbToRgb } from "./color";
+
 export default class Slate {
     width: number;
     height: number;
@@ -60,7 +65,7 @@ export default class Slate {
                 tempImg.width,
                 tempImg.height
             );
-            this.buffer = imageData.data;
+            this.buffer = imageData.data.map(u => Math.floor(srgbToRgb(u / 255) * 255));
             this.width = imageData.width;
             this.height = imageData.height;
 

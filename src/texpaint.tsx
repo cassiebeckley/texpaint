@@ -32,12 +32,6 @@ const Renderer = ({
         }
     });
 
-    // useEffect(() => {
-    //     window.addEventListener('error', (e) => {
-    //         setError(e.error);
-    //     });
-    // }, []);
-
     if (error) {
         return (
             <div

@@ -1,11 +1,12 @@
 import { vec3, vec4 } from 'gl-matrix';
+import { srgbToRgb } from './color';
 import { lerp, smoothstep } from './math';
 import Slate from './slate';
 import WindowManager from './windowManager';
 
 export default class BrushEngine {
     radius: number;
-    color: vec3;
+    private _color: vec3;
     spacing: number;
     slate: Slate;
 
@@ -20,6 +21,8 @@ export default class BrushEngine {
         spacing: number,
         windowManager: WindowManager
     ) {
+        this._color = vec3.create();
+
         const radius = diameter / 2;
         this.radius = radius;
         this.color = color;
@@ -31,6 +34,11 @@ export default class BrushEngine {
         this.segmentStart = vec3.create();
         this.segmentStartPressure = 0;
         this.segmentSoFar = 0;
+    }
+
+    set color(sRgb: vec3) {
+        const [r, g, b] = sRgb.map(srgbToRgb);
+        vec3.set(this._color, r, g, b)
     }
 
     startStroke(imageCoord: vec3, pressure: number) {
@@ -110,9 +118,9 @@ export default class BrushEngine {
             const color = vec4.create();
             vec4.set(
                 color,
-                this.color[0],
-                this.color[1],
-                this.color[2],
+                this._color[0],
+                this._color[1],
+                this._color[2],
                 radius * 2
             );
             this.applyPixelInteger(center, color);
@@ -151,7 +159,7 @@ export default class BrushEngine {
 
         const alpha = 1 - smoothstep(radius - delta, radius, distance);
 
-        vec4.set(color, this.color[0], this.color[1], this.color[2], alpha);
+        vec4.set(color, this._color[0], this._color[1], this._color[2], alpha);
 
         this.applyPixelInteger(pixelCoord, color);
     }

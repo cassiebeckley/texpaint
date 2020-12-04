@@ -1,4 +1,4 @@
-#pragma glslify: tonemap = require(../../tonemap)
+#pragma glslify: import(../../color)
 
 precision mediump float;
 
