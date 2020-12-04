@@ -1,3 +1,5 @@
+#pragma glslify: tonemap = require(../../tonemap)
+
 precision mediump float;
 
 varying highp vec2 vTextureCoord;
@@ -10,9 +12,11 @@ const highp vec3 lightDir = normalize(vec3(1.0, 0.8, 0.1));
 const vec3 lightColor = vec3(0.8, 0.8, 0.8);
 const vec3 ambient = vec3(0.2, 0.2, 0.2);
 
-#pragma glslify: tonemap = require(../../tonemap.glsl)
+const float backgroundStrength = 1.0; // this probably makes more sense as a shared const or even a uniform
 
 #define PI 3.1415926538
+
+const float gamma = 2.2;
 
 vec4 equirectangular(sampler2D tex, vec3 direction) {
     float x = (1.0 + atan(direction.z, direction.x) / PI) / 2.0;
@@ -25,7 +29,7 @@ void main() {
     vec2 coord = vTextureCoord;
     coord.y = 1.0 - coord.y; // TODO: figure out if this should be done in the loader
 
-    vec3 color = texture2D(uSampler, coord).rgb;
+    vec3 albedo = pow(texture2D(uSampler, coord).rgb, vec3(gamma)); // convert from sRGB to linear space
 
     highp vec3 normal = normalize(vVertexNormal);
     float luminance = clamp(dot(normal, lightDir), 0.0, 1.0);
@@ -42,14 +46,14 @@ void main() {
 
                 ray *= sign(dot(ray, normal));
 
-                diffuse += equirectangular(uBackground, ray).xyz;
+                diffuse += equirectangular(uBackground, ray).xyz * backgroundStrength;
             }
         }
     }
 
     diffuse /= float(cbrt_samples * cbrt_samples * cbrt_samples);
 
-    // gl_FragColor.rgb = color * light + color * ambient;
-    gl_FragColor.rgb = tonemap(color * diffuse);
+    // gl_FragColor.rgb = albedo * light + albedo * ambient;
+    gl_FragColor.rgb = tonemap(albedo * diffuse);
     gl_FragColor.a = 1.0;
 }

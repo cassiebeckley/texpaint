@@ -3,17 +3,13 @@ import {
     CUBE_INDICES,
     CUBE_LINE_INDICES,
     CUBE_VERTICES,
-    generateRectVerticesStrip,
-    rectVerticesStripUV,
 } from '../primitives';
 import WindowManager from '../windowManager';
 
 import loadShaderProgram, { Shader } from '../shaders';
 
-import background from '../immenstadter_horn_1k.hdr';
-// import background from '../../test_assets/classroom_blender.hdr';
-// import background from '../../test_assets/10px_blender.hdr';
-// import background from '../../test_assets/4px_blender.hdr';
+import background from '../assets/backgrounds/immenstadter_horn_1k.hdr';
+// import background from '../assets/backgrounds/photo_studio_01_1k.hdr';
 console.log(background);
 
 import vertUVShader from '../shaders/uvShader/vert.glsl';

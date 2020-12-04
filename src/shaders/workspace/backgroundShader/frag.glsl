@@ -1,10 +1,12 @@
+#pragma glslify: tonemap = require(../../tonemap)
+
 precision mediump float;
 
 varying vec3 vPosition;
 
 uniform sampler2D uSampler;
 
-#pragma glslify: tonemap = require(../../tonemap.glsl)
+const float backgroundStrength = 1.0; // this probably makes more sense as a shared const or even a uniform
 
 #define PI 3.1415926538
 
@@ -20,7 +22,7 @@ void main() {
 
     vec2 coord = normalize(vPosition.xy);
 
-    vec3 color = equirectangular(uSampler, direction).rgb;
+    vec3 color = equirectangular(uSampler, direction).rgb * 2.0;
 
     gl_FragColor = vec4(tonemap(color), 1.0);
     gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
