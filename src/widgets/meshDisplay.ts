@@ -33,40 +33,11 @@ export default class MeshDisplay {
     backgroundTexture: WebGLTexture;
     backgroundShader: Shader;
 
-    initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGLRenderingContext) {
         this.backgroundTexture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
 
         this.backgroundLoaded = false;
-        loadEnvironment(background).then((hdr) => {
-            console.log('loaded background'); // TODO: redraw on load
-
-            gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
-            const level = 0;
-            const internalFormat = gl.RGB;
-            const srcFormat = gl.RGB;
-            const srcType = gl.FLOAT;
-            const border = 0;
-            gl.texImage2D(
-                gl.TEXTURE_2D,
-                level,
-                internalFormat,
-                hdr.width,
-                hdr.height,
-                border,
-                srcFormat,
-                srcType,
-                hdr.pixels
-            );
-
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-            this.backgroundLoaded = true;
-        });
 
         this.cubeBuffer = gl.createBuffer();
 
@@ -101,6 +72,37 @@ export default class MeshDisplay {
             fragBackgroundShader
         );
         this.lineShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
+
+        let hdr = await loadEnvironment(background);
+        console.log('loaded background'); // TODO: redraw on load
+
+        gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
+        const level = 0;
+        const internalFormat = gl.RGB;
+        const srcFormat = gl.RGB;
+        const srcType = gl.FLOAT;
+        const border = 0;
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            level,
+            internalFormat,
+            hdr.width,
+            hdr.height,
+            border,
+            srcFormat,
+            srcType,
+            hdr.pixels
+        );
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        this.backgroundLoaded = true;
+
+        return true;
     }
 
     drawMainPass(

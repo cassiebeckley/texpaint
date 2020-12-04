@@ -14,7 +14,7 @@ export default class TextureDisplay {
     imageShader: Shader;
     imageUVBuffer: WebGLBuffer; // TODO: share this with all rectangles?
 
-    initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGLRenderingContext) {
         this.imagePositionBuffer = gl.createBuffer();
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
@@ -39,6 +39,8 @@ export default class TextureDisplay {
             new Float32Array(rectVerticesStripUV),
             gl.STATIC_DRAW
         );
+
+        return false;
     }
 
     draw(
@@ -115,6 +117,7 @@ export default class TextureDisplay {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, windowManager.slate.texture);
         gl.uniform1i(this.imageShader.uniforms.uSampler, 0);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); // show the pixels
 
         {
             const offset = 0;

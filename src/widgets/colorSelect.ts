@@ -13,7 +13,7 @@ export default class ColorSelect {
     vertexBuffer: WebGLBuffer;
     uvBuffer: WebGLBuffer;
 
-    initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGLRenderingContext) {
         this.colorSelectShader = loadShaderProgram(
             gl,
             vertColorSelectShader,
@@ -35,6 +35,8 @@ export default class ColorSelect {
             new Float32Array(rectVerticesStripUV),
             gl.STATIC_DRAW
         );
+
+        return false;
     }
 
     draw(

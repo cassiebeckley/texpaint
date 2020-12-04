@@ -53,7 +53,11 @@ export default class WindowManager {
             const WidgetConstructor = widgets[i];
             const widget = new WidgetConstructor();
 
-            widget.initGL(this.gl);
+            widget.initGL(this.gl).then(redraw => {
+                if (redraw) {
+                    this.drawOnNextFrame();
+                }
+            });
 
             this.widgets[WidgetConstructor.name] = widget;
         }

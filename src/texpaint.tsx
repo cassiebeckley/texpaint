@@ -107,8 +107,8 @@ const TopBar = ({ on2d, on3d }) => {
             const reader = new FileReader();
 
             if (file.type.startsWith('image')) {
-                reader.onload = (e: ProgressEvent<FileReader>) => {
-                    windowManager.slate.load(e.target.result as string);
+                reader.onload = async (e: ProgressEvent<FileReader>) => {
+                    await windowManager.slate.load(e.target.result as string);
                     windowManager.drawOnNextFrame();
                 };
                 reader.readAsDataURL(file);

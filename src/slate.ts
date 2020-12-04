@@ -46,33 +46,15 @@ export default class Slate {
         return buffer;
     }
 
-    load(url: string) {
-        // parse image file
-        // we have to use Canvas as an intermediary
-        const tempImg = document.createElement('img');
+    async load(url: string) {
+        const imageData = await loadImage(url);
 
-        // TODO: probably return Promise
+        this.buffer = imageData.data.map(u => Math.floor(srgbToRgb(u / 255) * 255));
+        this.width = imageData.width;
+        this.height = imageData.height;
 
-        tempImg.addEventListener('load', () => {
-            const scratchCanvas = document.createElement('canvas');
-            scratchCanvas.width = tempImg.width;
-            scratchCanvas.height = tempImg.height;
-            const scratchContext = scratchCanvas.getContext('2d');
-            scratchContext.drawImage(tempImg, 0, 0);
-            const imageData = scratchContext.getImageData(
-                0,
-                0,
-                tempImg.width,
-                tempImg.height
-            );
-            this.buffer = imageData.data.map(u => Math.floor(srgbToRgb(u / 255) * 255));
-            this.width = imageData.width;
-            this.height = imageData.height;
-
-            this.markUpdate();
-            this.resetHistory();
-        });
-        tempImg.src = url;
+        this.markUpdate();
+        this.resetHistory();
     }
 
     markUpdate() {
@@ -137,3 +119,33 @@ export default class Slate {
         }
     }
 }
+
+const loadImage = (url: string): Promise<ImageData> => new Promise((resolve, reject) => {
+    // parse image file
+    // we have to use Canvas as an intermediary
+    const tempImg = document.createElement('img');
+
+    tempImg.addEventListener('load', () => {
+        try {
+            const scratchCanvas = document.createElement('canvas');
+            scratchCanvas.width = tempImg.width;
+            scratchCanvas.height = tempImg.height;
+            const scratchContext = scratchCanvas.getContext('2d');
+            scratchContext.drawImage(tempImg, 0, 0);
+            const imageData = scratchContext.getImageData(
+                0,
+                0,
+                tempImg.width,
+                tempImg.height
+            );
+
+            resolve(imageData);
+        } catch (e) {
+            reject(e);
+        }
+    });
+
+    tempImg.addEventListener('error', reject);
+
+    tempImg.src = url;
+});
