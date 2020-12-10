@@ -115,7 +115,7 @@ export default class TextureDisplay {
         }
 
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, windowManager.slate.texture);
+        gl.bindTexture(gl.TEXTURE_2D, windowManager.slate.albedo);
         gl.uniform1i(this.imageShader.uniforms.uSampler, 0);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); // show the pixels
 

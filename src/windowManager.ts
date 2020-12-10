@@ -1,5 +1,7 @@
 import { mat4, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
+import Image, { ImageFormat, ImageStorage } from './loader/image';
+import MeshData from './loader/meshData';
 import Mesh from './mesh';
 import Slate from './slate';
 import type Widget from './widget';
@@ -174,6 +176,10 @@ export default class WindowManager {
         this.drawList = this.drawList.filter(({ id }) => id !== cancelId);
         this.drawOnNextFrame();
     }
+
+    setMesh(meshData: MeshData) {
+        this.mesh = new Mesh(this.gl, this.slate, meshData);
+    }
 }
 
 const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
@@ -185,3 +191,46 @@ const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
     }
     return ext;
 };
+
+export function loadTextureFromImage(gl: WebGLRenderingContext, texture: WebGLTexture, image: Image): WebGLTexture {
+    let format = gl.RGB;
+    if (image.format === ImageFormat.RGBA) {
+        format = gl.RGBA;
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    const level = 0;
+    const internalFormat = format;
+    const srcFormat = format;
+
+    let srcType = gl.UNSIGNED_BYTE;
+    if (image.storage.type === ImageStorage.Float32) {
+        srcType = gl.FLOAT;
+    }
+
+    const border = 0;
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        level,
+        internalFormat,
+        image.width,
+        image.height,
+        border,
+        srcFormat,
+        srcType,
+        image.storage.pixels
+    );
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    if (image.storage.type === ImageStorage.Uint8) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    } else if (image.storage.type === ImageStorage.Float32) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    }
+
+    return texture;
+}

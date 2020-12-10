@@ -1,0 +1,5 @@
+Multiple wasm libraries use zlib - use a shared version
+Check for other shared dependencies
+
+Support UDIM
+Use OpenColorIO for real ACES tonemapping

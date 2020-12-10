@@ -1,7 +1,7 @@
 // At the moment this represents a single-layer, editable image
 // We're going to want everything to work in a linear space internally
 
-import { srgbToRgb } from "./color";
+import Image, { ImageFormat, ImageStorage } from "./loader/image";
 
 export default class Slate {
     width: number;
@@ -13,7 +13,7 @@ export default class Slate {
 
     updated: boolean;
 
-    texture: WebGLTexture;
+    albedo: WebGLTexture;
 
     // texture:
     constructor(gl: WebGLRenderingContext, width: number, height: number) {
@@ -26,14 +26,7 @@ export default class Slate {
 
         this.updated = true;
 
-        this.texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        this.albedo = gl.createTexture();
     }
 
     private createLayerBuffer(opaque: boolean) {
@@ -46,12 +39,42 @@ export default class Slate {
         return buffer;
     }
 
-    async load(url: string) {
-        const imageData = await loadImage(url);
+    load(image: Image) {
+        switch (image.storage.type) {
+            case ImageStorage.Uint8:
+                this.buffer = image.storage.pixels;
+                break;
+            case ImageStorage.Float32:
+                this.buffer = new Uint8ClampedArray(image.width * image.height * 4);
 
-        this.buffer = imageData.data.map(u => Math.floor(srgbToRgb(u / 255) * 255));
-        this.width = imageData.width;
-        this.height = imageData.height;
+                let pixelWidth = 4;
+                if (image.format === ImageFormat.RGB) {
+                    pixelWidth = 3;
+                }
+
+                let destIndex = 0;
+
+                for (let i = 0; i < image.storage.pixels.length;) {
+                    // const [r, g, b] = image.storage.pixels.slice(i, 3).map(v => 255 * v);
+                    const r = image.storage.pixels[i++];
+                    const g = image.storage.pixels[i++];
+                    const b = image.storage.pixels[i++];
+
+                    let a = 1;
+
+                    if (pixelWidth > 3) {
+                        a = image.storage.pixels[i++];
+                    }
+
+                    this.buffer[destIndex++] = r * 255;
+                    this.buffer[destIndex++] = g * 255;
+                    this.buffer[destIndex++] = b * 255;
+                    this.buffer[destIndex++] = a * 255;
+                }
+                break;
+        }
+        this.width = image.width;
+        this.height = image.height;
 
         this.markUpdate();
         this.resetHistory();
@@ -65,7 +88,7 @@ export default class Slate {
         if (!this.updated) return;
         // upload texture
 
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.bindTexture(gl.TEXTURE_2D, this.albedo); // TODO: store buffer as Image and use loadTextureFromImage
         const level = 0;
         const internalFormat = gl.RGBA;
         const srcFormat = gl.RGBA;
@@ -119,33 +142,3 @@ export default class Slate {
         }
     }
 }
-
-const loadImage = (url: string): Promise<ImageData> => new Promise((resolve, reject) => {
-    // parse image file
-    // we have to use Canvas as an intermediary
-    const tempImg = document.createElement('img');
-
-    tempImg.addEventListener('load', () => {
-        try {
-            const scratchCanvas = document.createElement('canvas');
-            scratchCanvas.width = tempImg.width;
-            scratchCanvas.height = tempImg.height;
-            const scratchContext = scratchCanvas.getContext('2d');
-            scratchContext.drawImage(tempImg, 0, 0);
-            const imageData = scratchContext.getImageData(
-                0,
-                0,
-                tempImg.width,
-                tempImg.height
-            );
-
-            resolve(imageData);
-        } catch (e) {
-            reject(e);
-        }
-    });
-
-    tempImg.addEventListener('error', reject);
-
-    tempImg.src = url;
-});

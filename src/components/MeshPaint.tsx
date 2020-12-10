@@ -178,12 +178,12 @@ export default function MeshPaint({}) {
 
         if (windowManager.mesh) {
             const point = vec3.create();
-            if (windowManager.mesh.raycast(point, camOrigin, camDirection)) {
-                // console.log('raycast:', camOrigin, camDirection, point);
-                setPaintPoint(point);
-            } else {
-                // setPaintPoint(null);
-            }
+            // if (windowManager.mesh.raycast(point, camOrigin, camDirection)) {
+            //     // console.log('raycast:', camOrigin, camDirection, point);
+            //     setPaintPoint(point);
+            // } else {
+            //     // setPaintPoint(null);
+            // }
         }
     };
 

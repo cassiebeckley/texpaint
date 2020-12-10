@@ -1,0 +1,1 @@
+emcc wrap_libtiff.cpp --bind -o wrap_libtiff.js ./libtiff/libtiff/libtiff.a ./libtiff/libtiff/libtiffxx.a -s MODULARIZE -s ALLOW_MEMORY_GROWTH=1 -I./libtiff/libtiff

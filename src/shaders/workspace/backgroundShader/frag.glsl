@@ -1,12 +1,10 @@
-#pragma glslify: import(../../color)
+#pragma glslify: tonemap = require(../../color/tonemap)
 
 precision mediump float;
 
 varying vec3 vPosition;
 
 uniform sampler2D uSampler;
-
-const float backgroundStrength = 1.0; // this probably makes more sense as a shared const or even a uniform
 
 #define PI 3.1415926538
 
@@ -19,8 +17,6 @@ vec4 equirectangular(sampler2D tex, vec3 direction) {
 
 void main() {
     vec3 direction = normalize(vPosition);
-
-    vec2 coord = normalize(vPosition.xy);
 
     vec3 color = equirectangular(uSampler, direction).rgb * 2.0;
 

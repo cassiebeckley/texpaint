@@ -4,13 +4,18 @@ import {
     CUBE_LINE_INDICES,
     CUBE_VERTICES,
 } from '../primitives';
-import WindowManager from '../windowManager';
+import WindowManager, { loadTextureFromImage } from '../windowManager';
 
 import loadShaderProgram, { Shader } from '../shaders';
 
-import background from '../assets/backgrounds/immenstadter_horn_1k.hdr';
-// import background from '../assets/backgrounds/photo_studio_01_1k.hdr';
-console.log(background);
+import background from 'url:../assets/backgrounds/immenstadter_horn_1k.hdr';
+
+import irradiance0 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map0.hdr';
+import irradiance1 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map1.hdr';
+import irradiance2 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map2.hdr';
+import irradiance3 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map3.hdr';
+import irradiance4 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map4.hdr';
+import irradiance5 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map5.hdr';
 
 import vertUVShader from '../shaders/uvShader/vert.glsl';
 import fragUVShader from '../shaders/uvShader/frag.glsl';
@@ -19,8 +24,10 @@ import vertBackgroundShader from '../shaders/workspace/backgroundShader/vert.gls
 import fragBackgroundShader from '../shaders/workspace/backgroundShader/frag.glsl';
 
 import { FIELD_OF_VIEW } from '../constants';
-import { parseRadianceHDR } from '../parser';
 import Mesh from '../mesh';
+import { loadAssetFromURL } from '../loader';
+import { AssetType } from '../loader/asset';
+import { ImageStorage } from '../loader/image';
 
 export default class MeshDisplay {
     cubeBuffer: WebGLBuffer;
@@ -31,11 +38,12 @@ export default class MeshDisplay {
 
     backgroundLoaded: boolean;
     backgroundTexture: WebGLTexture;
+    irradianceTexture: WebGLTexture;
     backgroundShader: Shader;
 
     async initGL(gl: WebGLRenderingContext) {
         this.backgroundTexture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
+        this.irradianceTexture = gl.createTexture();
 
         this.backgroundLoaded = false;
 
@@ -73,32 +81,55 @@ export default class MeshDisplay {
         );
         this.lineShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
 
-        let hdr = await loadEnvironment(background);
-        console.log('loaded background'); // TODO: redraw on load
+        let hdrAsset = await loadAssetFromURL(background);
+        let faces = await Promise.all([irradiance0, irradiance1, irradiance2, irradiance3, irradiance4, irradiance5].map(url => loadAssetFromURL(url)));
+        console.log('loaded background');
 
-        gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
-        const level = 0;
-        const internalFormat = gl.RGB;
-        const srcFormat = gl.RGB;
-        const srcType = gl.FLOAT;
-        const border = 0;
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            level,
-            internalFormat,
-            hdr.width,
-            hdr.height,
-            border,
-            srcFormat,
-            srcType,
-            hdr.pixels
-        );
+        if (hdrAsset.type !== AssetType.Image) {
+            throw new Error('background must be an image');
+        }
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        loadTextureFromImage(gl, this.backgroundTexture, hdrAsset.image);
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.irradianceTexture);
+
+        let sides = [
+            gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+            gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+            gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+            gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+            gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+            gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
+        ];
+
+        const magenta = new Float32Array([255, 0, 1]);
+
+        for (let i = 0; i < faces.length; i++) {
+            let face = faces[i];
+            if (face.type !== AssetType.Image) {
+                throw new Error('need image');
+            }
+
+            let image = face.image;
+
+            if (image.storage.type != ImageStorage.Float32) {
+                throw new Error('irradiance should be HDR');
+            }
+
+            let pixels = image.storage.pixels;
+
+            console.log('loading', magenta, 'to', sides[i]);
+
+            const level = 0;
+            const internalFormat = gl.RGB;
+            const format = gl.RGB;
+            const type = gl.FLOAT;
+            gl.texImage2D(sides[i], level, internalFormat, image.width, image.height, 0, format, type, pixels);
+            // gl.texImage2D(sides[i], level, internalFormat, 1, 1, 0, format, type, magenta);
+
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        }
 
         this.backgroundLoaded = true;
 
@@ -125,7 +156,7 @@ export default class MeshDisplay {
         }
 
         if (mesh) {
-            mesh.draw(gl, view, projection, this.backgroundTexture);
+            mesh.draw(gl, view, projection, this.irradianceTexture);
         }
 
         // this.drawCube(gl, view, projection, [0, 0, 0], 0.4);
@@ -326,9 +357,3 @@ export function getView(
 export function getProjection(out: mat4, width: number, height: number) {
     mat4.perspective(out, FIELD_OF_VIEW, width / height, 0.1, 100.0);
 }
-
-const loadEnvironment = async (background: string) => {
-    const response = await fetch(background);
-    const data = await response.arrayBuffer();
-    return await parseRadianceHDR(data);
-};

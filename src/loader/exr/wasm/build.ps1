@@ -1,0 +1,1 @@
+emcc wrap_tinyexr.cpp --bind -o wrap_tinyexr.js -s MODULARIZE -s ALLOW_MEMORY_GROWTH=1 # -s TOTAL_MEMORY=1073741824

@@ -8,10 +8,12 @@ import { WindowContext } from './components/Widget';
 import WindowManager from './windowManager';
 import TextureDisplay from './widgets/textureDisplay';
 import TexturePaint from './components/TexturePaint';
-import Mesh from './mesh';
 import MeshPaint from './components/MeshPaint';
 import MeshDisplay from './widgets/meshDisplay';
 import Widget from './widget';
+import { loadAssetFromBlob } from './loader';
+import { AssetType } from './loader/asset';
+import ImageWidget from './widgets/imageWidget';
 
 const Renderer = ({
     widgets,
@@ -104,38 +106,44 @@ const TopBar = ({ on2d, on3d }) => {
 
         input.addEventListener('change', function () {
             const file = this.files[0];
-            const reader = new FileReader();
 
-            if (file.type.startsWith('image')) {
-                reader.onload = async (e: ProgressEvent<FileReader>) => {
-                    await windowManager.slate.load(e.target.result as string);
-                    windowManager.drawOnNextFrame();
-                };
-                reader.readAsDataURL(file);
-            } else if (file.name.endsWith('.obj')) {
-                reader.onload = (e: ProgressEvent<FileReader>) => {
-                    const meshes = Mesh.fromWaveformObj(
-                        windowManager.gl,
-                        e.target.result as string
-                    );
-                    console.log(meshes[0]);
-                    meshes[0].setTexture(windowManager.slate.texture);
-                    windowManager.mesh = meshes[0];
-                    windowManager.drawOnNextFrame();
-                };
-                reader.readAsBinaryString(file);
-            } else {
-                throw new Error('unsupported file format');
-            }
+            (async () => {
+                const asset = await loadAssetFromBlob(file.name, file);
+                switch (asset.type) {
+                    case AssetType.Image:
+                        windowManager.slate.load(asset.image);
+                        break;
+                    case AssetType.Mesh:
+                        const mesh = asset.meshes[0];
+                        windowManager.setMesh(mesh);
+                        break;
+                }
+                windowManager.drawOnNextFrame();
+            })(); // TODO: finish moving this to the asset loader system
+            // } else if (file.name.endsWith('.obj')) {
+            //     reader.onload = (e: ProgressEvent<FileReader>) => {
+            //         const meshes = Mesh.fromWaveformObj(
+            //             windowManager.gl,
+            //             e.target.result as string
+            //         );
+            //         console.log(meshes[0]);
+            //         meshes[0].setTexture(windowManager.slate.texture);
+            //         windowManager.mesh = meshes[0];
+            //         windowManager.drawOnNextFrame();
+            //     };
+            //     reader.readAsBinaryString(file);
+            // } else {
+            //     throw new Error('unsupported file format');
+            // }
         });
     };
 
     return (
         <div className="top-bar">
-            <button id="2d-button" onClick={on2d}>
+            <button onClick={on2d}>
                 2D Texture
             </button>
-            <button id="3d-button" onClick={on3d}>
+            <button onClick={on3d}>
                 3D Object
             </button>
             <button onClick={handleOpen}>Open</button>
@@ -150,30 +158,16 @@ const App = () => {
     const [showTexture, setShowTexture] = useState(false);
     const [showMesh, setShowMesh] = useState(true);
 
-    // return <div
-    //     style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-    // >
-    //     <Renderer widgets={[ColorSelect, TextureDisplay, MeshDisplay]}>
-    //         <div style={{backgroundColor: 'rebeccapurple', color: 'white'}}>
-    //             hey there
-    //         </div>
-    //         {/* <TopBar
-    //             on2d={() => setShowTexture(!showTexture)}
-    //             on3d={() => setShowMesh(!showMesh)}
-    //         /> */}
-    //     </Renderer>
-    // </div>;
-
     return (
         <div
             style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
-            <Renderer widgets={[ColorSelect, TextureDisplay, MeshDisplay]}>
+            <Renderer widgets={[ColorSelect, TextureDisplay, MeshDisplay, ImageWidget]}>
                 <TopBar
                     on2d={() => setShowTexture(!showTexture)}
                     on3d={() => setShowMesh(!showMesh)}
                 />
-                <div style={{ flexGrow: 1, display: 'flex' }}>
+                <div style={{ flexGrow: 1, display: 'flex', position: 'relative' }}>
                     {showTexture && <TexturePaint />}
                     {showMesh && <MeshPaint />}
                 </div>
