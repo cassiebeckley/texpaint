@@ -18,7 +18,7 @@ export default async function parseExr(data: ArrayBuffer): Promise<Asset> {
 
     const exr = new tinyexr.EXRLoader(data);
     if (!exr.ok()) {
-        throw new Error("couldn't load EXR");
+        throw new Error(`couldn't load EXR: ${exr.error()}`);
     }
 
     const width = exr.width();

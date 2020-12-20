@@ -11,20 +11,11 @@ varying highp vec3 vWorldPosition;
 uniform sampler2D uAlbedo;
 uniform samplerCube uIrradiance; // TODO: replace irradiance map with spherical harmonics
 
-const float backgroundStrength = 1.0; // this probably makes more sense as a shared const or even a uniform
-
 float metallic = 0.0;
 float roughness = 0.5;
 float ao = 1.0;
 
 #define PI 3.1415926538
-
-vec4 equirectangular(sampler2D tex, vec3 direction) {
-    float x = (1.0 + atan(direction.z, direction.x) / PI) / 2.0;
-    float y = acos(direction.y) / PI;
-    vec2 coord = vec2(x, y);
-    return texture2D(tex, coord);
-}
 
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) { // TODO: evaluate options for BRDF terms
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
@@ -62,6 +53,33 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
     return ggx1 * ggx2;
 }
 
+vec3 textureCubeSample(samplerCube cubemap, vec3 dir) {
+    // sort of awkward attempt at smoothing float texture
+    // TODO: this should all go once I switch to spherical harmonics
+    float sampleDelta = 0.1;
+    vec3 samples = vec3(0.0);
+
+    float startAngle = -(sampleDelta * 2.0) / 2.0;
+
+    vec3 up = vec3(0.0, 1.0, 0.0);
+    vec3 right = cross(up, dir);
+    up = cross(dir, right);
+
+    for (int phiIter = 0; phiIter < 4; phiIter++) {
+        float phi = float(phiIter) * sampleDelta + startAngle;
+        for (int thetaIter = 0; thetaIter < 4; thetaIter++) {
+            float theta = float(thetaIter) * sampleDelta + startAngle;
+
+            vec3 tangentSample = vec3(sin(theta) * cos(theta), sin(theta) * sin(phi), cos(theta));
+            vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * dir;
+
+            samples += textureCube(cubemap, sampleVec).rgb;
+        }
+    }
+
+    return samples * (1.0 / 16.0);
+}
+
 void main() {
     vec2 coord = vTextureCoord;
     coord.y = 1.0 - coord.y; // TODO: figure out if this should be done in the loader
@@ -69,8 +87,11 @@ void main() {
     highp vec3 N = normalize(vVertexNormal);
     highp vec3 V = normalize(uCameraPosition - vWorldPosition);
 
-    vec3 irradiance = textureCube(uIrradiance, N).rgb;
+    vec3 irradiance = textureCubeSample(uIrradiance, N).rgb;
     vec3 albedo = texture2D(uAlbedo, coord).rgb;
+
+    gl_FragColor = vec4(irradiance, 1.0);
+    return;
 
     vec3 F0 = vec3(0.04); // TODO: probably calculate this from the IOR
 

@@ -8,14 +8,19 @@ import WindowManager, { loadTextureFromImage } from '../windowManager';
 
 import loadShaderProgram, { Shader } from '../shaders';
 
-import background from 'url:../assets/backgrounds/immenstadter_horn_1k.hdr';
+import irradiance0 from 'url:../assets/backgrounds/forest_slope/irradiance0.exr';
+import irradiance1 from 'url:../assets/backgrounds/forest_slope/irradiance1.exr';
+import irradiance2 from 'url:../assets/backgrounds/forest_slope/irradiance2.exr';
+import irradiance3 from 'url:../assets/backgrounds/forest_slope/irradiance3.exr';
+import irradiance4 from 'url:../assets/backgrounds/forest_slope/irradiance4.exr';
+import irradiance5 from 'url:../assets/backgrounds/forest_slope/irradiance5.exr';
 
-import irradiance0 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map0.hdr';
-import irradiance1 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map1.hdr';
-import irradiance2 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map2.hdr';
-import irradiance3 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map3.hdr';
-import irradiance4 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map4.hdr';
-import irradiance5 from 'url:../assets/backgrounds/immenstadter_irradiance/horn_map5.hdr';
+import skybox0 from 'url:../assets/backgrounds/forest_slope/skybox0.png';
+import skybox1 from 'url:../assets/backgrounds/forest_slope/skybox1.png';
+import skybox2 from 'url:../assets/backgrounds/forest_slope/skybox2.png';
+import skybox3 from 'url:../assets/backgrounds/forest_slope/skybox3.png';
+import skybox4 from 'url:../assets/backgrounds/forest_slope/skybox4.png';
+import skybox5 from 'url:../assets/backgrounds/forest_slope/skybox5.png';
 
 import vertUVShader from '../shaders/uvShader/vert.glsl';
 import fragUVShader from '../shaders/uvShader/frag.glsl';
@@ -37,12 +42,12 @@ export default class MeshDisplay {
     lineShader: Shader;
 
     backgroundLoaded: boolean;
-    backgroundTexture: WebGLTexture;
+    skyboxTexture: WebGLTexture;
     irradianceTexture: WebGLTexture;
     backgroundShader: Shader;
 
     async initGL(gl: WebGLRenderingContext) {
-        this.backgroundTexture = gl.createTexture();
+        this.skyboxTexture = gl.createTexture();
         this.irradianceTexture = gl.createTexture();
 
         this.backgroundLoaded = false;
@@ -81,17 +86,11 @@ export default class MeshDisplay {
         );
         this.lineShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
 
-        let hdrAsset = await loadAssetFromURL(background);
-        let faces = await Promise.all([irradiance0, irradiance1, irradiance2, irradiance3, irradiance4, irradiance5].map(url => loadAssetFromURL(url)));
+        let skyboxFaces = await Promise.all([skybox0, skybox1, skybox2, skybox3, skybox4, skybox5].map(url => loadAssetFromURL(url)));
+        let irradianceFaces = await Promise.all([irradiance0, irradiance1, irradiance2, irradiance3, irradiance4, irradiance5].map(url => loadAssetFromURL(url)));
         console.log('loaded background');
 
-        if (hdrAsset.type !== AssetType.Image) {
-            throw new Error('background must be an image');
-        }
-
-        loadTextureFromImage(gl, this.backgroundTexture, hdrAsset.image);
-
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.irradianceTexture);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
 
         let sides = [
             gl.TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -102,10 +101,36 @@ export default class MeshDisplay {
             gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
         ];
 
-        const magenta = new Float32Array([255, 0, 1]);
+        const magenta = new Uint8ClampedArray([255, 0, 255]);
 
-        for (let i = 0; i < faces.length; i++) {
-            let face = faces[i];
+        for (let i = 0; i < skyboxFaces.length; i++) {
+            let face = skyboxFaces[i];
+            if (face.type !== AssetType.Image) {
+                throw new Error('need image');
+            }
+
+            let image = face.image;
+
+            if (image.storage.type != ImageStorage.Uint8) {
+                throw new Error('skybox should be SDR');
+            }
+
+            let pixels = image.storage.pixels;
+
+            const level = 0;
+            const internalFormat = gl.RGBA;
+            const format = gl.RGBA;
+            const type = gl.UNSIGNED_BYTE;
+            gl.texImage2D(sides[i], level, internalFormat, image.width, image.height, 0, format, type, pixels);
+
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.irradianceTexture);
+
+        for (let i = 0; i < irradianceFaces.length; i++) {
+            let face = irradianceFaces[i];
             if (face.type !== AssetType.Image) {
                 throw new Error('need image');
             }
@@ -118,14 +143,11 @@ export default class MeshDisplay {
 
             let pixels = image.storage.pixels;
 
-            console.log('loading', magenta, 'to', sides[i]);
-
             const level = 0;
             const internalFormat = gl.RGB;
             const format = gl.RGB;
             const type = gl.FLOAT;
             gl.texImage2D(sides[i], level, internalFormat, image.width, image.height, 0, format, type, pixels);
-            // gl.texImage2D(sides[i], level, internalFormat, 1, 1, 0, format, type, magenta);
 
             gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -249,8 +271,8 @@ export default class MeshDisplay {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
 
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.backgroundTexture);
-        gl.uniform1i(this.backgroundShader.uniforms.uSampler, 0);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
+        gl.uniform1i(this.backgroundShader.uniforms.uSkybox, 0);
 
         gl.drawElements(
             gl.TRIANGLES,
