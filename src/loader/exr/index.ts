@@ -1,5 +1,5 @@
-import Module from './wasm/wrap_tinyexr';
-import m_Url from 'url:./wasm/wrap_tinyexr.wasm';
+import Module from './wasm/wrap_openexr';
+import m_Url from 'url:./wasm/wrap_openexr.wasm';
 import Image, { ImageFormat, ImageStorage } from '../image';
 import Asset, { AssetType } from '../asset';
 
@@ -14,17 +14,16 @@ const getInstance = async () => {
 }
 
 export default async function parseExr(data: ArrayBuffer): Promise<Asset> {
-    const tinyexr = await getInstance();
+    const openexr = await getInstance();
 
-    const exr = new tinyexr.EXRLoader(data);
-    if (!exr.ok()) {
-        throw new Error(`couldn't load EXR: ${exr.error()}`);
-    }
+    const exr = new openexr.EXRLoader(data);
 
     const width = exr.width();
     const height = exr.height();
 
     const imageBuffer: Float32Array = exr.getBytes();
+
+    exr.delete(); // free memory
 
     const image: Image = {
         width,

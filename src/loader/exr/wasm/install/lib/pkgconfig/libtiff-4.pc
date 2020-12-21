@@ -1,0 +1,11 @@
+prefix=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install
+exec_prefix=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install
+libdir=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/lib
+includedir=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/include
+
+Name: libtiff
+Description:  Tag Image File Format (TIFF) library.
+Version: 4.2.0
+Libs: -LC:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/lib -ltiff
+Libs.private: 
+Cflags: -IC:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/include

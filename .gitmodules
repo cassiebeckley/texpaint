@@ -1,12 +1,3 @@
-[submodule "src/loaders/exr/wasm/tinyexr"]
-	path = src/loaders/exr/wasm/tinyexr
-	url = https://github.com/syoyo/tinyexr.git
 [submodule "src/loader/tiff/libtiff"]
 	path = src/loader/tiff/wasm/libtiff
 	url = https://gitlab.com/libtiff/libtiff.git
-[submodule "src/color/OpenColorIO"]
-	path = src/color/OpenColorIO
-	url = https://github.com/AcademySoftwareFoundation/OpenColorIO.git
-[submodule "src/color/openexr"]
-	path = src/color/openexr
-	url = https://github.com/AcademySoftwareFoundation/openexr.git

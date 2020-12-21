@@ -1,0 +1,13 @@
+prefix=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install
+exec_prefix=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install
+libdir=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/lib
+sharedlibdir=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/lib
+includedir=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.9
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

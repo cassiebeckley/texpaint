@@ -28,6 +28,8 @@ export default async function parseTiff(data: ArrayBuffer): Promise<Asset> {
     const imageBufferPacked: Uint32Array = tiff.getBytes();
     const imageBuffer = new Uint8ClampedArray(width * height * 4);
 
+    tiff.delete(); // free memory
+
     let destIndex = 0;
 
     for (let i = 0; i < imageBufferPacked.length; i++) {

@@ -1,0 +1,17 @@
+##
+## SPDX-License-Identifier: BSD-3-Clause
+## Copyright Contributors to the OpenEXR Project.
+##
+
+prefix=C:/Users/Thoth/Documents/texpaint/src/loader/image/wasm/install
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+libsuffix=-2_5
+Name: IlmBase
+Description: Base math and exception libraries
+Version: 2.5.3
+Requires:
+Conflicts:
+Libs: -L${libdir} -lImath${libsuffix} -lHalf${libsuffix} -lIex${libsuffix} -lIexMath${libsuffix} -lIlmThread${libsuffix} 
+Cflags:  -I${includedir} -I${includedir}/OpenEXR
