@@ -6,7 +6,7 @@ import Image, { ImageFormat, ImageStorage } from "./loader/image";
 export default class Slate {
     width: number;
     height: number;
-    buffer: Uint8ClampedArray;
+    albedoBuffer: Uint8ClampedArray;
 
     history: Uint8ClampedArray[];
     historyIndex: number;
@@ -19,7 +19,7 @@ export default class Slate {
     constructor(gl: WebGLRenderingContext, width: number, height: number) {
         this.width = width;
         this.height = height;
-        this.buffer = this.createLayerBuffer(true);
+        this.albedoBuffer = this.createLayerBuffer(true);
 
         this.history = [];
         this.historyIndex = 0;
@@ -42,10 +42,10 @@ export default class Slate {
     load(image: Image) {
         switch (image.storage.type) {
             case ImageStorage.Uint8:
-                this.buffer = image.storage.pixels;
+                this.albedoBuffer = image.storage.pixels;
                 break;
             case ImageStorage.Float32:
-                this.buffer = new Uint8ClampedArray(image.width * image.height * 4);
+                this.albedoBuffer = new Uint8ClampedArray(image.width * image.height * 4);
 
                 let pixelWidth = 4;
                 if (image.format === ImageFormat.RGB) {
@@ -66,10 +66,10 @@ export default class Slate {
                         a = image.storage.pixels[i++];
                     }
 
-                    this.buffer[destIndex++] = r * 255;
-                    this.buffer[destIndex++] = g * 255;
-                    this.buffer[destIndex++] = b * 255;
-                    this.buffer[destIndex++] = a * 255;
+                    this.albedoBuffer[destIndex++] = r * 255;
+                    this.albedoBuffer[destIndex++] = g * 255;
+                    this.albedoBuffer[destIndex++] = b * 255;
+                    this.albedoBuffer[destIndex++] = a * 255;
                 }
                 break;
         }
@@ -99,7 +99,7 @@ export default class Slate {
             internalFormat,
             srcFormat,
             srcType,
-            new ImageData(this.buffer, this.width)
+            new ImageData(this.albedoBuffer, this.width)
         );
     }
 
@@ -115,7 +115,7 @@ export default class Slate {
 
         this.history.length = this.historyIndex;
 
-        const currentBuffer = new Uint8ClampedArray(this.buffer);
+        const currentBuffer = new Uint8ClampedArray(this.albedoBuffer);
         this.history.push(currentBuffer);
         this.historyIndex++;
     }
@@ -126,10 +126,10 @@ export default class Slate {
         }
         if (this.historyIndex > 0) {
             this.history[this.historyIndex] = new Uint8ClampedArray(
-                this.buffer
+                this.albedoBuffer
             );
             this.historyIndex--;
-            this.buffer = this.history[this.historyIndex];
+            this.albedoBuffer = this.history[this.historyIndex];
             this.markUpdate();
         }
     }
@@ -137,7 +137,7 @@ export default class Slate {
     redo() {
         if (this.historyIndex < this.history.length - 1) {
             this.historyIndex++;
-            this.buffer = this.history[this.historyIndex];
+            this.albedoBuffer = this.history[this.historyIndex];
             this.markUpdate();
         }
     }

@@ -172,9 +172,9 @@ export default class BrushEngine {
         const existing = vec3.create();
         vec3.set(
             existing,
-            this.slate.buffer[baseIndex],
-            this.slate.buffer[baseIndex + 1],
-            this.slate.buffer[baseIndex + 2]
+            this.slate.albedoBuffer[baseIndex],
+            this.slate.albedoBuffer[baseIndex + 1],
+            this.slate.albedoBuffer[baseIndex + 2]
         );
         vec3.scale(existing, existing, 1 / 255);
 
@@ -183,10 +183,10 @@ export default class BrushEngine {
 
         vec3.lerp(colorRGB, existing, colorRGB, color[3]);
 
-        this.slate.buffer[baseIndex] = colorRGB[0] * 255;
-        this.slate.buffer[baseIndex + 1] = colorRGB[1] * 255;
-        this.slate.buffer[baseIndex + 2] = colorRGB[2] * 255;
-        this.slate.buffer[baseIndex + 3] = 255;
+        this.slate.albedoBuffer[baseIndex] = colorRGB[0] * 255;
+        this.slate.albedoBuffer[baseIndex + 1] = colorRGB[1] * 255;
+        this.slate.albedoBuffer[baseIndex + 2] = colorRGB[2] * 255;
+        this.slate.albedoBuffer[baseIndex + 3] = 255;
     }
 
     getRadiusForStroke(radius: number, { pressure }) {
