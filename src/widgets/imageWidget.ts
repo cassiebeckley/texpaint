@@ -3,19 +3,14 @@ import loadShaderProgram, { Shader } from '../shaders';
 import vertImageShader from '../shaders/imageShader/vert.glsl';
 import fragImageShader from '../shaders/imageShader/frag.glsl';
 
-import vertACESShader from '../shaders/acesTestShader/vert.glsl';
-import fragACESShader from '../shaders/acesTestShader/frag.glsl';
-
 import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
 import { mat4 } from 'gl-matrix';
 import WindowManager, { loadTextureFromImage } from '../windowManager';
-import Image from '../loader/image';
 
 export default class ImageWidget {
     imagePositionBuffer: WebGLBuffer;
 
     imageShader: Shader;
-    acesShader: Shader;
     imageUVBuffer: WebGLBuffer;
 
     imageTexture: WebGLTexture;
@@ -36,12 +31,6 @@ export default class ImageWidget {
             fragImageShader
         );
 
-        this.acesShader = loadShaderProgram(
-            gl,
-            vertACESShader,
-            fragACESShader
-        );
-
         this.imageUVBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
         gl.bufferData(
@@ -59,7 +48,7 @@ export default class ImageWidget {
         windowManager: WindowManager,
         width: number,
         height: number,
-        { image, odt }
+        { image }
     ) {
         const gl = windowManager.gl;
 
@@ -68,9 +57,6 @@ export default class ImageWidget {
         mat4.scale(modelViewMatrix, modelViewMatrix, [width, height, 0]);
 
         let shader = this.imageShader;
-        if (odt) {
-            shader = this.acesShader;
-        }
 
         gl.useProgram(shader.program);
 

@@ -107,7 +107,9 @@ export default class Mesh {
         gl: WebGLRenderingContext,
         modelViewMatrix: mat4,
         projectionMatrix: mat4,
-        irradiance: WebGLTexture
+        irradiance: WebGLTexture,
+        prefilterMaps: WebGLTexture[],
+        brdfLUT: WebGLTexture,
     ) {
         gl.useProgram(this.standardShader.program);
 
@@ -206,6 +208,30 @@ export default class Mesh {
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, irradiance);
         gl.uniform1i(this.standardShader.uniforms.uIrradiance, 1);
+
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, brdfLUT);
+        gl.uniform1i(this.standardShader.uniforms.uBrdfLUT, 2);
+
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[0]);
+        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel0, 3);
+
+        gl.activeTexture(gl.TEXTURE4);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[1]);
+        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel1, 4);
+
+        gl.activeTexture(gl.TEXTURE5);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[2]);
+        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel2, 5);
+
+        gl.activeTexture(gl.TEXTURE6);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[3]);
+        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel3, 6);
+
+        gl.activeTexture(gl.TEXTURE7);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[4]);
+        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel4, 7);
 
         gl.drawElements( // TODO: do instanced draw with drawArrays
             gl.TRIANGLES,

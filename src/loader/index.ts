@@ -95,7 +95,6 @@ export async function loadAssetFromURL(url: string): Promise<Asset> {
 };
 
 export async function loadAssetFromBlob(name: string, blob: Blob): Promise<Asset> {
-    console.log('trying to load', name);
     const extension = getExtension(name);
 
     if (loaders.hasOwnProperty(extension)) {
@@ -116,4 +115,11 @@ export async function loadAssetFromBlob(name: string, blob: Blob): Promise<Asset
     } finally {
         URL.revokeObjectURL(url);
     }
+}
+
+export function cacheMap<T>(f: (asset: Asset, key: string) => T): T[] {
+    let keys = Object.keys(cache);
+    keys.sort();
+
+    return keys.map(key => f(cache[key], key));
 }

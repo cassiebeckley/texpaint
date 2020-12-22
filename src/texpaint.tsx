@@ -14,6 +14,7 @@ import Widget from './widget';
 import { loadAssetFromBlob } from './loader';
 import { AssetType } from './loader/asset';
 import ImageWidget from './widgets/imageWidget';
+import ViewAssetCache from './components/ViewAssetCache';
 
 const Renderer = ({
     widgets,
@@ -119,22 +120,7 @@ const TopBar = ({ on2d, on3d }) => {
                         break;
                 }
                 windowManager.drawOnNextFrame();
-            })(); // TODO: finish moving this to the asset loader system
-            // } else if (file.name.endsWith('.obj')) {
-            //     reader.onload = (e: ProgressEvent<FileReader>) => {
-            //         const meshes = Mesh.fromWaveformObj(
-            //             windowManager.gl,
-            //             e.target.result as string
-            //         );
-            //         console.log(meshes[0]);
-            //         meshes[0].setTexture(windowManager.slate.texture);
-            //         windowManager.mesh = meshes[0];
-            //         windowManager.drawOnNextFrame();
-            //     };
-            //     reader.readAsBinaryString(file);
-            // } else {
-            //     throw new Error('unsupported file format');
-            // }
+            })();
         });
     };
 

@@ -21,7 +21,9 @@ export default async function parseExr(data: ArrayBuffer): Promise<Asset> {
     const width = exr.width();
     const height = exr.height();
 
-    const imageBuffer: Float32Array = exr.getBytes();
+    const imageBuffer: Float32Array = exr.getBytes().slice(0);
+    // It might be better to leave this in WASM memory space rather than cloning
+    // would need to remove the delete below
 
     exr.delete(); // free memory
 

@@ -9,7 +9,13 @@ varying highp vec3 vVertexNormal;
 varying highp vec3 vWorldPosition;
 
 uniform sampler2D uAlbedo;
-uniform samplerCube uIrradiance; // TODO: replace irradiance map with spherical harmonics
+uniform highp samplerCube uIrradiance; // TODO: replace irradiance map with spherical harmonics
+uniform highp sampler2D uBrdfLUT;
+uniform highp samplerCube uPrefilterMapLevel0; // TODO: see if this can be replaced with spherical harmonics
+uniform highp samplerCube uPrefilterMapLevel1;
+uniform highp samplerCube uPrefilterMapLevel2;
+uniform highp samplerCube uPrefilterMapLevel3;
+uniform highp samplerCube uPrefilterMapLevel4;
 
 float metallic = 0.0;
 float roughness = 0.5;
@@ -18,7 +24,7 @@ float ao = 1.0;
 #define PI 3.1415926538
 
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) { // TODO: evaluate options for BRDF terms
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
@@ -53,7 +59,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
     return ggx1 * ggx2;
 }
 
-vec3 textureCubeSample(samplerCube cubemap, vec3 dir) {
+highp vec3 textureCubeSample(samplerCube cubemap, highp vec3 dir) {
     // sort of awkward attempt at smoothing float texture
     // TODO: this should all go once I switch to spherical harmonics
     float sampleDelta = 0.1;
@@ -80,68 +86,49 @@ vec3 textureCubeSample(samplerCube cubemap, vec3 dir) {
     return samples * (1.0 / 16.0);
 }
 
+vec3 getPrefiltered(vec3 R, float roughness) {
+    const float MAX_REFLECTION_LOD = 4.0;
+    int level = int(floor(roughness * MAX_REFLECTION_LOD + 0.5));
+
+    if (level == 0) return textureCube(uPrefilterMapLevel0, R).rgb;
+    if (level == 1) return textureCube(uPrefilterMapLevel1, R).rgb;
+    if (level == 2) return textureCube(uPrefilterMapLevel2, R).rgb;
+    if (level == 3) return textureCube(uPrefilterMapLevel3, R).rgb;
+    return textureCube(uPrefilterMapLevel4, R).rgb;
+}
+
 void main() {
     vec2 coord = vTextureCoord;
     coord.y = 1.0 - coord.y; // TODO: figure out if this should be done in the loader
 
     highp vec3 N = normalize(vVertexNormal);
     highp vec3 V = normalize(uCameraPosition - vWorldPosition);
+    highp vec3 R = reflect(-V, N);
 
-    vec3 irradiance = textureCubeSample(uIrradiance, N).rgb;
+    highp vec3 irradiance = textureCubeSample(uIrradiance, N).rgb;
+    // highp vec3 prefilteredColor = textureCubeLodEXT(uPrefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    highp vec3 prefilteredColor = getPrefiltered(R, roughness);
     vec3 albedo = texture2D(uAlbedo, coord).rgb;
 
-    gl_FragColor = vec4(irradiance, 1.0);
-    return;
-
     vec3 F0 = vec3(0.04); // TODO: probably calculate this from the IOR
+    F0 = mix(F0, albedo, metallic);
 
-    vec3 lightPositions[4];
-    lightPositions[0] = vec3(-10.0,  10.0, 10.0);
-    lightPositions[1] = vec3( 10.0,  10.0, 10.0);
-    lightPositions[2] = vec3(-10.0, -10.0, 10.0);
-    lightPositions[3] = vec3( 10.0, -10.0, 10.0);
-        
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
-    vec3 lightColors[4];
-    lightColors[0] = vec3(300.0, 300.0, 300.0);
-    lightColors[1] = vec3(300.0, 300.0, 300.0);
-    lightColors[2] = vec3(300.0, 300.0, 300.0);
-    lightColors[3] = vec3(300.0, 300.0, 300.0);
+    float brdf_x = max(dot(N, V), 0.0);
+    float brdf_y = 1.0 - roughness;
+    vec2 brdf = texture2D(uBrdfLUT, vec2(brdf_x, brdf_y)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
-    vec3 Lo = vec3(0.0, 0.0, 0.0);
-    for (int i = 0; i < 4; i++) {
-        vec3 L = normalize(lightPositions[i] - vWorldPosition);
-        vec3 H = normalize(V + L); // halfway vector
-
-        float distance = length(lightPositions[i] - vWorldPosition);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = lightColors[i] * attenuation;
-
-        F0 = mix(F0, albedo, metallic);
-        vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0, 0.0);
-
-        float NDF = DistributionGGX(N, H, roughness);
-        float G = GeometrySmith(N, V, L, roughness);
-
-        vec3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-        vec3 specular = numerator / max(denominator, 0.001);
-
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-
-        kD *= 1.0 - metallic;
-
-        float NdotL = max(dot(N, L), 0.0); // TODO: some of these dot products are recalculated a lot, see if there's any optimization here
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-    }
-
-    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kS = F;
     vec3 kD = 1.0 - kS;
-    vec3 diffuse = irradiance * albedo;
-    vec3 ambient = (kD * diffuse) * ao;
+    kD *= 1.0 - metallic;
 
-    vec3 color = ambient; // + Lo;
+
+    vec3 diffuse = irradiance * albedo;
+    vec3 ambient = (kD * diffuse + specular) * ao;
+
+    vec3 color = ambient;
     gl_FragColor.rgb = tonemap(color);
     gl_FragColor.a = 1.0;
 }
