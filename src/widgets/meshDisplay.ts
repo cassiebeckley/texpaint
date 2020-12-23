@@ -239,8 +239,6 @@ export default class MeshDisplay {
                 if (image.storage.type != ImageStorage.Float32) {
                     throw new Error('prefiltered environment should be HDR');
                 }
-
-                console.log(`level ${level} side ${i}`, image.storage.pixels);
     
                 let pixels = image.storage.pixels;
     
@@ -276,7 +274,7 @@ export default class MeshDisplay {
         getProjection(projection, width, height);
 
         if (this.backgroundLoaded) {
-            this.drawBackground(gl, rotation, projection);
+            // this.drawBackground(gl, rotation, projection);
         }
 
         if (mesh) {
@@ -308,7 +306,7 @@ export default class MeshDisplay {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-        gl.clearColor(0.2, 0.1, 0.3, 1.0);
+        gl.clearColor(0.2, 0.2, 0.2, 1.0);
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
