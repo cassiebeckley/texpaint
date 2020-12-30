@@ -12,6 +12,10 @@ import { normalizeWheelEvent } from '../utils';
 import { getProjection, getView } from '../widgets/meshDisplay';
 import Widget, { WindowContext } from './Widget';
 
+const BINARY_LEFT_MOUSE_BUTTON = 0b1;
+const BINARY_MIDDLE_MOUSE_BUTTON = 0b10;
+const BINARY_RIGHT_MOUSE_BUTTON = 0b100;
+
 const WORLD_UP = vec3.create();
 vec3.set(WORLD_UP, 0, 1, 0);
 
@@ -32,7 +36,7 @@ export default function MeshPaint({}) {
     const [lastPanPosition, setLastPanPosition] = useState(vec3.create());
 
     const [paintPoint, setPaintPoint] = useState(null);
-    // console.log('paintPoint:', paintPoint);
+    const [pressure, setPressure] = useState(1.0);
 
     const div = useRef(null);
 
@@ -118,6 +122,9 @@ export default function MeshPaint({}) {
             } else {
                 handleRotateStart(coords);
             }
+        } else if (e.button === 0) {
+            // windowManager.brushEngine.startStroke3D(paintPoint, e.pressure);
+            setPressure(e.pressure);
         }
     };
 
@@ -129,6 +136,9 @@ export default function MeshPaint({}) {
             handleRotateStop();
         } else if (pan) {
             handlePanStop();
+        } else if (e.button === 0) {
+            // windowManager.brushEngine.finishStroke3D(paintPoint, e.pressure);
+            setPressure(1);
         }
     };
 
@@ -140,6 +150,10 @@ export default function MeshPaint({}) {
             handleRotateMove(coords);
         } else if (pan) {
             handlePanMove(coords);
+        } else if (e.buttons & BINARY_LEFT_MOUSE_BUTTON) {
+            // const imageCoords = uiToImageCoordinates(coords);
+            // windowManager.brushEngine.continueStroke3D(imageCoords, e.pressure);
+            setPressure(e.pressure);
         }
 
         // get the ray from the camera for the current pixel
@@ -174,7 +188,6 @@ export default function MeshPaint({}) {
         const camDirection = vec3.create();
         vec3.set(camDirection, rayBase[0], rayBase[1], rayBase[2]);
         vec3.normalize(camDirection, camDirection);
-        // console.log(camDirection);
 
         if (windowManager.mesh) {
             const point = vec3.create();

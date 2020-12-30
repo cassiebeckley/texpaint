@@ -1,5 +1,5 @@
-import { AssetType } from "../asset";
-import Image, { ImageFormat, ImageStorage } from "../image";
+import Asset, { AssetType } from '../asset';
+import Image, { ImageFormat, ImageStorage } from '../image';
 
 type ParseResult<T> = [T, number];
 
@@ -69,9 +69,7 @@ const getPixel = (
 };
 
 // maybe make this a streaming parser at some point
-async function parseRadianceHDR(
-    buffer: ArrayBuffer
-): Promise<RadianceHDR> {
+async function parseRadianceHDR(buffer: ArrayBuffer): Promise<RadianceHDR> {
     const data = new Uint8Array(buffer);
     const hdr: RadianceHDR = {
         format: RadianceHDRFormat.RGBE,
@@ -253,11 +251,9 @@ async function parseRadianceHDR(
     console.log(hdr);
 
     return hdr;
-};
+}
 
-export async function getHDRImage(
-    buffer: ArrayBuffer
-): Promise<Asset> {
+export async function getHDRImage(buffer: ArrayBuffer): Promise<Asset> {
     const hdr = await parseRadianceHDR(buffer);
 
     if (hdr.format === RadianceHDRFormat.XYZE) {
@@ -265,18 +261,18 @@ export async function getHDRImage(
         // eventually I might want this to translate to ACES but preserve input color spaces for now
     }
 
-    const image = {
+    const image: Image = {
         width: hdr.width,
         height: hdr.height,
         format: ImageFormat.RGB, // no alpha channel
         storage: {
             type: ImageStorage.Float32,
-            pixels: hdr.pixels
-        }
+            pixels: hdr.pixels,
+        },
     };
 
     return {
         type: AssetType.Image,
-        image
+        image,
     };
 }

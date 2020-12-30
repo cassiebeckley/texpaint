@@ -1,12 +1,11 @@
 import { mat4, vec3 } from 'gl-matrix';
 import loadShaderProgram, { Shader } from '../shaders';
 
-import vertImageShader from '../shaders/imageShader/vert.glsl';
-import fragImageShader from '../shaders/imageShader/frag.glsl';
+import vertImageShader from 'url:../shaders/imageShader/vert.glsl';
+import fragImageShader from 'url:../shaders/imageShader/frag.glsl';
 
 import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
 import WindowManager from '../windowManager';
-import Slate from '../slate';
 
 export default class TextureDisplay {
     imagePositionBuffer: WebGLBuffer;
@@ -30,8 +29,6 @@ export default class TextureDisplay {
             fragImageShader
         );
 
-        // TODO create texture for each layer (probably split layer into a class)
-
         this.imageUVBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
         gl.bufferData(
@@ -52,7 +49,8 @@ export default class TextureDisplay {
         const gl = windowManager.gl;
 
         const modelViewMatrix = getModelViewMatrix(
-            windowManager.slate,
+            windowManager.slate.width,
+            windowManager.slate.height,
             width,
             height,
             scale,
@@ -135,7 +133,8 @@ export default class TextureDisplay {
 }
 
 export function getModelViewMatrix(
-    slate: Slate,
+    slateWidth: number,
+    slateHeight: number,
     width: number,
     height: number,
     scale: number,
@@ -143,10 +142,10 @@ export function getModelViewMatrix(
 ) {
     const modelMatrix = mat4.create();
     mat4.identity(modelMatrix);
-    mat4.scale(modelMatrix, modelMatrix, [slate.width, slate.height, 1]);
+    mat4.scale(modelMatrix, modelMatrix, [slateWidth, slateHeight, 1]);
 
-    const currentWidth = slate.width * scale;
-    const currentHeight = slate.height * scale;
+    const currentWidth = slateWidth * scale;
+    const currentHeight = slateHeight * scale;
 
     const viewMatrix = mat4.create();
     mat4.identity(viewMatrix);

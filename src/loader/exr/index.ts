@@ -11,7 +11,7 @@ const getInstance = async () => {
 
     instance = Module({ locateFile: () => m_Url });
     return instance;
-}
+};
 
 export default async function parseExr(data: ArrayBuffer): Promise<Asset> {
     const openexr = await getInstance();
@@ -34,11 +34,11 @@ export default async function parseExr(data: ArrayBuffer): Promise<Asset> {
         storage: {
             type: ImageStorage.Float32,
             pixels: imageBuffer,
-        }
+        },
     };
 
     return {
         type: AssetType.Image,
-        image
+        image,
     };
-};
+}

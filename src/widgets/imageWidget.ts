@@ -88,9 +88,7 @@ export default class ImageWidget {
                 stride,
                 offset
             );
-            gl.enableVertexAttribArray(
-                shader.attributes.aVertexPosition
-            );
+            gl.enableVertexAttribArray(shader.attributes.aVertexPosition);
         }
 
         {
@@ -108,9 +106,7 @@ export default class ImageWidget {
                 stride,
                 offset
             );
-            gl.enableVertexAttribArray(
-                shader.attributes.aTextureCoord
-            );
+            gl.enableVertexAttribArray(shader.attributes.aTextureCoord);
         }
 
         this.imageTexture = loadTextureFromImage(gl, this.imageTexture, image); // TODO: don't reupload on every redraw

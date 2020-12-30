@@ -1,11 +1,11 @@
 export enum ImageFormat {
     RGB,
-    RGBA
-};
+    RGBA,
+}
 
 export enum ImageStorage {
     Float32,
-    Uint8
+    Uint8,
 }
 
 export interface FloatImageBuffer {
@@ -25,4 +25,4 @@ export default interface Image {
     height: number;
     format: ImageFormat;
     storage: ImageBuffer;
-};
+}

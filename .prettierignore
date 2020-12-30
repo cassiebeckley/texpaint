@@ -1,0 +1,4 @@
+dist
+docs
+src/loader/exr/wasm
+src/loader/tiff/wasm

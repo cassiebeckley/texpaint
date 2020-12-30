@@ -29,7 +29,8 @@ export default function TexturePaint() {
         const widgetBounds = div.current.getBoundingClientRect();
 
         const modelViewMatrix = getModelViewMatrix(
-            windowManager.slate,
+            windowManager.slate.width,
+            windowManager.slate.height,
             widgetBounds.width,
             widgetBounds.height,
             scale,
@@ -79,6 +80,8 @@ export default function TexturePaint() {
     };
 
     const handlePointerDown = (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         const coords = vec3.create();
         vec3.set(coords, e.clientX, e.clientY, 0);
 
@@ -105,6 +108,8 @@ export default function TexturePaint() {
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         const coords = vec3.create();
         vec3.set(coords, e.clientX, e.clientY, 0);
 

@@ -1,12 +1,17 @@
-import { vec3, vec4 } from 'gl-matrix';
-import { srgbToRgb } from './color';
-import { lerp, smoothstep } from './math';
+import { mat4, vec3 } from 'gl-matrix';
+import { lerp } from './math';
+import { generateRectVertices, rectVerticesUV } from './primitives';
 import Slate from './slate';
 import WindowManager from './windowManager';
+import loadShaderProgram, { Shader } from './shaders';
+
+import vertImageShader from 'url:./shaders/brush/2dShader/vert.glsl';
+import fragImageShader from 'url:./shaders/brush/2dShader/frag.glsl';
 
 export default class BrushEngine {
+    gl: WebGLRenderingContext;
+
     radius: number;
-    private _color: vec3;
     spacing: number;
     slate: Slate;
 
@@ -15,17 +20,22 @@ export default class BrushEngine {
     segmentSoFar: number;
     windowManager: WindowManager;
 
+    stampVertices: number[];
+    stampUVs: number[];
+
+    brushShader: Shader;
+
+    private framebuffer: WebGLFramebuffer;
+
     constructor(
         diameter: number,
-        color: vec3,
         spacing: number,
         windowManager: WindowManager
     ) {
-        this._color = vec3.create();
+        this.gl = windowManager.gl;
 
         const radius = diameter / 2;
         this.radius = radius;
-        this.color = color;
         this.spacing = spacing;
 
         this.windowManager = windowManager;
@@ -34,19 +44,28 @@ export default class BrushEngine {
         this.segmentStart = vec3.create();
         this.segmentStartPressure = 0;
         this.segmentSoFar = 0;
-    }
 
-    set color(sRgb: vec3) {
-        const [r, g, b] = sRgb.map(srgbToRgb);
-        vec3.set(this._color, r, g, b)
+        this.stampVertices = [];
+        this.stampUVs = [];
+
+        this.brushShader = loadShaderProgram(
+            this.gl,
+            vertImageShader,
+            fragImageShader
+        );
+
+        const gl = this.gl;
+
+        this.framebuffer = gl.createFramebuffer();
     }
 
     startStroke(imageCoord: vec3, pressure: number) {
-        this.slate.checkpoint(); // save image in undo stack
-
         vec3.copy(this.segmentStart, imageCoord);
         this.segmentStartPressure = pressure;
         this.segmentSoFar = 0;
+
+        this.stampVertices = [];
+        this.stampUVs = [];
     }
 
     continueStroke(imageCoord: vec3, pressure: number) {
@@ -83,15 +102,16 @@ export default class BrushEngine {
         this.segmentStartPressure = pressure;
         vec3.copy(this.segmentStart, imageCoord);
 
-        this.windowManager.drawOnNextFrame();
+        this.slate.markUpdate();
     }
 
     finishStroke(imageCoord: vec3, pressure: number) {
         this.iteration(imageCoord, pressure);
-        this.windowManager.drawOnNextFrame();
+        this.updateTextures();
+        this.slate.apply();
     }
 
-    iteration(brushCenter: vec3, pressure: number) {
+    private iteration(brushCenter: vec3, pressure: number) {
         // a single dot of the brush
 
         const radius = this.getRadiusForStroke(this.radius, { pressure });
@@ -106,91 +126,150 @@ export default class BrushEngine {
             return radius;
         }
 
-        this.fillCircle(brushCenter, radius);
-
-        this.slate.markUpdate();
-
-        return radius;
-    }
-
-    fillCircle(center: vec3, radius: number) {
-        if (radius < 0.5) {
-            const color = vec4.create();
-            vec4.set(
-                color,
-                this._color[0],
-                this._color[1],
-                this._color[2],
-                radius * 2
-            );
-            this.applyPixelInteger(center, color);
-        }
-
         const radiusSquare = vec3.create();
         vec3.set(radiusSquare, radius, radius, 0);
 
-        const startPosition = vec3.create();
-        vec3.sub(startPosition, center, radiusSquare);
+        const startPosition = vec3.clone(brushCenter);
+        startPosition[1] = this.slate.height - startPosition[1];
+        vec3.sub(startPosition, startPosition, radiusSquare);
 
-        const offset = vec3.create();
+        const side = radius * 2;
 
-        for (
-            let x = Math.floor(startPosition[0]);
-            x <= Math.ceil(startPosition[0] + radius * 2);
-            x++
-        ) {
-            for (
-                let y = Math.floor(startPosition[1]);
-                y <= Math.ceil(startPosition[1] + radius * 2);
-                y++
-            ) {
-                vec3.set(offset, x, y, 0);
-
-                this.fillCirclePixel(center, offset, radius);
-            }
-        }
-    }
-
-    fillCirclePixel(brushCenter: vec3, pixelCoord: vec3, radius: number) {
-        let color = vec4.create();
-
-        const distance = vec3.distance(brushCenter, pixelCoord);
-        const delta = 2; // this is a bit soft, but it looks nice to me so I'm keeping it
-
-        const alpha = 1 - smoothstep(radius - delta, radius, distance);
-
-        vec4.set(color, this._color[0], this._color[1], this._color[2], alpha);
-
-        this.applyPixelInteger(pixelCoord, color);
-    }
-
-    applyPixelInteger(pixelCoord: vec3, color: vec4) {
-        // round pixel coordinates
-        vec3.round(pixelCoord, pixelCoord);
-        const baseIndex =
-            (pixelCoord[1] * this.slate.width + pixelCoord[0]) * 4;
-        const existing = vec3.create();
-        vec3.set(
-            existing,
-            this.slate.albedoBuffer[baseIndex],
-            this.slate.albedoBuffer[baseIndex + 1],
-            this.slate.albedoBuffer[baseIndex + 2]
+        const geo = generateRectVertices(
+            startPosition[0],
+            startPosition[1],
+            side,
+            side
         );
-        vec3.scale(existing, existing, 1 / 255);
+        for (let i = 0; i < geo.length; i++) {
+            this.stampVertices.push(geo[i]);
+            this.stampUVs.push(rectVerticesUV[i]);
+        }
 
-        const colorRGB = vec3.create();
-        vec3.set(colorRGB, color[0], color[1], color[2]);
-
-        vec3.lerp(colorRGB, existing, colorRGB, color[3]);
-
-        this.slate.albedoBuffer[baseIndex] = colorRGB[0] * 255;
-        this.slate.albedoBuffer[baseIndex + 1] = colorRGB[1] * 255;
-        this.slate.albedoBuffer[baseIndex + 2] = colorRGB[2] * 255;
-        this.slate.albedoBuffer[baseIndex + 3] = 255;
+        return radius;
     }
 
     getRadiusForStroke(radius: number, { pressure }) {
         const factor = pressure * pressure;
         return radius * factor;
+    }
+
+    updateTextures() {
+        if (this.stampVertices.length === 0) {
+            return;
+        }
+
+        const gl = this.gl;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            this.slate.currentOperation,
+            0
+        );
+        gl.viewport(0, 0, this.slate.width, this.slate.height);
+        gl.scissor(0, 0, this.slate.width, this.slate.height);
+
+        gl.useProgram(this.brushShader.program);
+
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(this.stampVertices),
+            gl.STATIC_DRAW
+        );
+
+        const uvBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array(this.stampUVs),
+            gl.STATIC_DRAW
+        );
+
+        // set projection and model*view matrices;
+
+        const projectionMatrix = mat4.create();
+        mat4.ortho(
+            projectionMatrix,
+            0,
+            this.slate.width,
+            this.slate.height,
+            0,
+            -1,
+            1
+        );
+        const modelViewMatrix = mat4.create();
+        mat4.identity(modelViewMatrix);
+
+        // set projection and model*view matrices;
+        gl.uniformMatrix4fv(
+            this.brushShader.uniforms.uProjectionMatrix,
+            false,
+            projectionMatrix
+        );
+        gl.uniformMatrix4fv(
+            this.brushShader.uniforms.uModelViewMatrix,
+            false,
+            modelViewMatrix
+        );
+
+        {
+            const size = 2;
+            const type = gl.FLOAT; // 32 bit floats
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.vertexAttribPointer(
+                this.brushShader.attributes.aVertexPosition,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.brushShader.attributes.aVertexPosition
+            );
+        }
+
+        {
+            const size = 2;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+            gl.vertexAttribPointer(
+                this.brushShader.attributes.aTextureCoord,
+                size,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(
+                this.brushShader.attributes.aTextureCoord
+            );
+        }
+
+        {
+            const offset = 0;
+            const count = this.stampVertices.length / 2;
+            gl.drawArrays(gl.TRIANGLES, offset, count);
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        this.windowManager.restoreViewport();
+
+        gl.deleteBuffer(vertexBuffer);
+        gl.deleteBuffer(uvBuffer);
+
+        this.stampVertices = [];
+        this.stampUVs = [];
     }
 }

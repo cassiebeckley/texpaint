@@ -89,7 +89,7 @@ const BrushColor = () => {
                     brushColor={brushColor}
                     setBrushColor={(c: vec3) => {
                         setBrushColor(c);
-                        windowManager.brushEngine.color = c;
+                        windowManager.slate.color = c;
                     }}
                 />
             )}
@@ -126,12 +126,8 @@ const TopBar = ({ on2d, on3d }) => {
 
     return (
         <div className="top-bar">
-            <button onClick={on2d}>
-                2D Texture
-            </button>
-            <button onClick={on3d}>
-                3D Object
-            </button>
+            <button onClick={on2d}>2D Texture</button>
+            <button onClick={on3d}>3D Object</button>
             <button onClick={handleOpen}>Open</button>
             <div style={{ flexGrow: 1, textAlign: 'right' }}>
                 <BrushColor />
@@ -148,12 +144,25 @@ const App = () => {
         <div
             style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
-            <Renderer widgets={[ColorSelect, TextureDisplay, MeshDisplay, ImageWidget]}>
+            <Renderer
+                widgets={[
+                    ColorSelect,
+                    TextureDisplay,
+                    MeshDisplay,
+                    ImageWidget,
+                ]}
+            >
                 <TopBar
                     on2d={() => setShowTexture(!showTexture)}
                     on3d={() => setShowMesh(!showMesh)}
                 />
-                <div style={{ flexGrow: 1, display: 'flex', position: 'relative' }}>
+                <div
+                    style={{
+                        flexGrow: 1,
+                        display: 'flex',
+                        position: 'relative',
+                    }}
+                >
                     {showTexture && <TexturePaint />}
                     {showMesh && <MeshPaint />}
                 </div>

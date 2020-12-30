@@ -12,7 +12,7 @@ const getInstance = async () => {
 
     instance = Module({ locateFile: () => m_Url });
     return instance;
-}
+};
 
 export default async function parseTiff(data: ArrayBuffer): Promise<Asset> {
     const libtiff = await getInstance();
@@ -39,7 +39,7 @@ export default async function parseTiff(data: ArrayBuffer): Promise<Asset> {
         const b = (pixel >> 16) & 0xff;
         const a = (pixel >> 24) & 0xff;
 
-        imageBuffer[destIndex++] = 255 * srgbToRgb(r / 255); // assume sRGB 
+        imageBuffer[destIndex++] = 255 * srgbToRgb(r / 255); // assume sRGB
         imageBuffer[destIndex++] = 255 * srgbToRgb(g / 255);
         imageBuffer[destIndex++] = 255 * srgbToRgb(b / 255);
         imageBuffer[destIndex++] = 255 * srgbToRgb(a / 255);
@@ -52,11 +52,11 @@ export default async function parseTiff(data: ArrayBuffer): Promise<Asset> {
         storage: {
             type: ImageStorage.Uint8,
             pixels: imageBuffer,
-        }
+        },
     };
 
     return {
         type: AssetType.Image,
-        image
+        image,
     };
-};
+}

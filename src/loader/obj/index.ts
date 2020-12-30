@@ -1,6 +1,6 @@
-import { vec2, vec3 } from "gl-matrix";
-import Asset, { AssetType } from "../asset";
-import MeshData, { Triangle } from "../meshData";
+import { vec2, vec3 } from 'gl-matrix';
+import Asset, { AssetType } from '../asset';
+import MeshData, { Triangle } from '../meshData';
 
 interface IndexedVertex {
     vertexIndex: number;
@@ -8,7 +8,6 @@ interface IndexedVertex {
     normalIndex: number;
 }
 type IndexedTriangle = [IndexedVertex, IndexedVertex, IndexedVertex];
-
 
 const reIndex = (
     name: string,
@@ -65,7 +64,9 @@ const reIndex = (
 
 const utf8decoder = new TextDecoder();
 
-export default async function parseWaveformObj(objBuffer: ArrayBuffer): Promise<Asset> {
+export default async function parseWaveformObj(
+    objBuffer: ArrayBuffer
+): Promise<Asset> {
     const obj = utf8decoder.decode(objBuffer);
     const meshes: MeshData[] = [];
 
@@ -80,9 +81,7 @@ export default async function parseWaveformObj(objBuffer: ArrayBuffer): Promise<
     let currentIndex = 0; // TODO: check if this actually works
 
     const saveMesh = () => {
-        meshes.push(
-            reIndex(name, vertices, normals, uvs, indexedTriangles)
-        );
+        meshes.push(reIndex(name, vertices, normals, uvs, indexedTriangles));
 
         indexedTriangles = [];
     };
@@ -112,11 +111,7 @@ export default async function parseWaveformObj(objBuffer: ArrayBuffer): Promise<
                 break;
             case 'vt':
                 const uv = vec2.create();
-                vec2.set(
-                    uv,
-                    parseFloat(operands[1]),
-                    parseFloat(operands[2])
-                );
+                vec2.set(uv, parseFloat(operands[1]), parseFloat(operands[2]));
                 uvs.push(uv);
                 break;
             case 'vn':
@@ -170,6 +165,6 @@ export default async function parseWaveformObj(objBuffer: ArrayBuffer): Promise<
 
     return {
         type: AssetType.Mesh,
-        meshes
+        meshes,
     };
 }

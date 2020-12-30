@@ -31,8 +31,12 @@ export default class WindowManager {
     slate: Slate; // keeping this here until I find a better home for it
     mesh: Mesh; // and this
     brushEngine: BrushEngine; // and this as well
+    viewport: number[];
 
-    constructor(canvas: HTMLCanvasElement, widgets: { new (): Widget }[]) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        widgets: { new (): Widget; name: string }[]
+    ) {
         this.canvas = canvas;
         this.gl = canvas.getContext('webgl', { alpha: true });
         this.uiProjectionMatrix = mat4.create();
@@ -55,7 +59,7 @@ export default class WindowManager {
             const WidgetConstructor = widgets[i];
             const widget = new WidgetConstructor();
 
-            widget.initGL(this.gl).then(redraw => {
+            widget.initGL(this.gl).then((redraw) => {
                 if (redraw) {
                     this.drawOnNextFrame();
                 }
@@ -86,9 +90,9 @@ export default class WindowManager {
         this.drawId = 0;
         this.drawList = [];
 
-        this.slate = new Slate(this.gl, 1024, 576);
+        this.slate = new Slate(this, 1024, 1024);
         this.mesh = null;
-        this.brushEngine = new BrushEngine(brushSize, brushColor, 0.4, this);
+        this.brushEngine = new BrushEngine(brushSize, 0.4, this);
     }
 
     setViewport(x: number, y: number, width: number, height: number) {
@@ -98,8 +102,24 @@ export default class WindowManager {
 
         mat4.ortho(this.uiProjectionMatrix, 0, width, height, 0, -20, 20);
 
-        this.gl.viewport(x, y, width, height);
-        this.gl.scissor(x, y, width, height);
+        this.viewport = [x, y, width, height];
+
+        this.restoreViewport();
+    }
+
+    restoreViewport() {
+        this.gl.viewport(
+            this.viewport[0],
+            this.viewport[1],
+            this.viewport[2],
+            this.viewport[3]
+        );
+        this.gl.scissor(
+            this.viewport[0],
+            this.viewport[1],
+            this.viewport[2],
+            this.viewport[3]
+        );
     }
 
     viewportToWindow() {
@@ -115,13 +135,14 @@ export default class WindowManager {
     }
 
     draw() {
+        this.brushEngine.updateTextures();
+        this.slate.updateTextures();
+
         this.viewportToWindow();
 
         this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
         this.gl.clearDepth(1.0);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-
-        this.slate.uploadTexture(this.gl);
 
         for (let i = 0; i < this.drawList.length; i++) {
             const {
@@ -192,7 +213,11 @@ const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
     return ext;
 };
 
-export function loadTextureFromImage(gl: WebGLRenderingContext, texture: WebGLTexture, image: Image): WebGLTexture {
+export function loadTextureFromImage(
+    gl: WebGLRenderingContext,
+    texture: WebGLTexture,
+    image: Image
+): WebGLTexture {
     let format = gl.RGB;
     if (image.format === ImageFormat.RGBA) {
         format = gl.RGBA;

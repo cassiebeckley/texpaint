@@ -59,7 +59,6 @@ export function rgbToHsv(rgb: vec3) {
     return hsv;
 }
 
-
 // Implement IEC 61966-2-1:1999
 
 // defined for floating point colors (range of [0.0, 1.0] for SDR values)

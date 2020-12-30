@@ -7,6 +7,41 @@ export const generateRectVerticesStrip = (
 
 export const rectVerticesStripUV = [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
 
+export const generateRectVertices = (
+    x: number,
+    y: number,
+    width: number,
+    height: number
+) => [
+    x,
+    y,
+    x,
+    y + height,
+    x + width,
+    y,
+    x + width,
+    y,
+    x,
+    y + height,
+    x + width,
+    y + height,
+];
+
+export const rectVerticesUV = [
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    1.0,
+];
+
 export const CUBE_VERTICES = [
     1,
     1,

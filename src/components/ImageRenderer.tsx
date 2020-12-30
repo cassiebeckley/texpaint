@@ -3,7 +3,15 @@ import Widget from './Widget';
 
 import Image from '../loader/image';
 
-export default function ImageRenderer({ image, width, height }: { image: Image, width?: number, height?: number }) {
+export default function ImageRenderer({
+    image,
+    width,
+    height,
+}: {
+    image: Image;
+    width?: number;
+    height?: number;
+}) {
     const aspect = image.width / image.height;
     if (width || height) {
         if (!width) {
@@ -20,7 +28,6 @@ export default function ImageRenderer({ image, width, height }: { image: Image, 
             type="ImageWidget"
             widgetProps={{ image }}
             style={{ display: 'inline-block', width, height }}
-        >
-        </Widget>
+        ></Widget>
     );
 }

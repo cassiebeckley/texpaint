@@ -25,11 +25,7 @@ export default class Mesh {
 
     slate: Slate;
 
-    constructor(
-        gl: WebGLRenderingContext,
-        slate: Slate,
-        data: MeshData
-    ) {
+    constructor(gl: WebGLRenderingContext, slate: Slate, data: MeshData) {
         this.slate = slate;
         this.data = data;
 
@@ -109,7 +105,7 @@ export default class Mesh {
         projectionMatrix: mat4,
         irradiance: WebGLTexture,
         prefilterMaps: WebGLTexture[],
-        brdfLUT: WebGLTexture,
+        brdfLUT: WebGLTexture
     ) {
         gl.useProgram(this.standardShader.program);
 
@@ -131,10 +127,7 @@ export default class Mesh {
         const cameraPos = vec3.create();
         vec3.transformMat4(cameraPos, cameraPos, invModelView);
 
-        gl.uniform3fv(
-            this.standardShader.uniforms.uCameraPosition,
-            cameraPos
-        );
+        gl.uniform3fv(this.standardShader.uniforms.uCameraPosition, cameraPos);
 
         {
             const size = 3;
@@ -233,7 +226,8 @@ export default class Mesh {
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[4]);
         gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel4, 7);
 
-        gl.drawElements( // TODO: do instanced draw with drawArrays
+        gl.drawElements(
+            // TODO: do instanced draw with drawArrays
             gl.TRIANGLES,
             this.data.triangles.length * 3,
             gl.UNSIGNED_SHORT,

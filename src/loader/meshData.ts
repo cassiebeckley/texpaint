@@ -1,4 +1,4 @@
-import { vec2, vec3 } from "gl-matrix";
+import { vec2, vec3 } from 'gl-matrix';
 
 export type Triangle = [number, number, number];
 

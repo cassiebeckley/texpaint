@@ -1,9 +1,5 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
-import {
-    CUBE_INDICES,
-    CUBE_LINE_INDICES,
-    CUBE_VERTICES,
-} from '../primitives';
+import { CUBE_INDICES, CUBE_LINE_INDICES, CUBE_VERTICES } from '../primitives';
 import WindowManager, { loadTextureFromImage } from '../windowManager';
 
 import loadShaderProgram, { Shader } from '../shaders';
@@ -52,8 +48,6 @@ import prefiltered_roughness1_0__3 from 'url:../assets/backgrounds/forest_slope/
 import prefiltered_roughness1_0__4 from 'url:../assets/backgrounds/forest_slope/prefiltered_roughness1_0-4.exr';
 import prefiltered_roughness1_0__5 from 'url:../assets/backgrounds/forest_slope/prefiltered_roughness1_0-5.exr';
 
-
-
 import skybox0 from 'url:../assets/backgrounds/forest_slope/skybox0.png';
 import skybox1 from 'url:../assets/backgrounds/forest_slope/skybox1.png';
 import skybox2 from 'url:../assets/backgrounds/forest_slope/skybox2.png';
@@ -92,7 +86,9 @@ export default class MeshDisplay {
         this.skyboxTexture = gl.createTexture();
         this.brdfTexture = gl.createTexture();
         this.irradianceTexture = gl.createTexture();
-        this.prefilteredTextures = [1, 2, 3, 4, 5].map(_ => gl.createTexture());
+        this.prefilteredTextures = [1, 2, 3, 4, 5].map((_) =>
+            gl.createTexture()
+        );
 
         this.backgroundLoaded = false;
 
@@ -132,13 +128,71 @@ export default class MeshDisplay {
 
         let brdf_lut = await loadAssetFromURL(brdf_lut_url);
 
-        let skyboxFaces = await Promise.all([skybox0, skybox1, skybox2, skybox3, skybox4, skybox5].map(url => loadAssetFromURL(url)));
-        let irradianceFaces = await Promise.all([irradiance0, irradiance1, irradiance2, irradiance3, irradiance4, irradiance5].map(url => loadAssetFromURL(url)));
-        let prefiltered_roughness0_0Faces = await Promise.all([prefiltered_roughness0_0__0, prefiltered_roughness0_0__1, prefiltered_roughness0_0__2, prefiltered_roughness0_0__3, prefiltered_roughness0_0__4, prefiltered_roughness0_0__5].map(url => loadAssetFromURL(url)));
-        let prefiltered_roughness0_2Faces = await Promise.all([prefiltered_roughness0_2__0, prefiltered_roughness0_2__1, prefiltered_roughness0_2__2, prefiltered_roughness0_2__3, prefiltered_roughness0_2__4, prefiltered_roughness0_2__5].map(url => loadAssetFromURL(url)));
-        let prefiltered_roughness0_5Faces = await Promise.all([prefiltered_roughness0_5__0, prefiltered_roughness0_5__1, prefiltered_roughness0_5__2, prefiltered_roughness0_5__3, prefiltered_roughness0_5__4, prefiltered_roughness0_5__5].map(url => loadAssetFromURL(url)));
-        let prefiltered_roughness0_7Faces = await Promise.all([prefiltered_roughness0_7__0, prefiltered_roughness0_7__1, prefiltered_roughness0_7__2, prefiltered_roughness0_7__3, prefiltered_roughness0_7__4, prefiltered_roughness0_7__5].map(url => loadAssetFromURL(url)));
-        let prefiltered_roughness1_0Faces = await Promise.all([prefiltered_roughness1_0__0, prefiltered_roughness1_0__1, prefiltered_roughness1_0__2, prefiltered_roughness1_0__3, prefiltered_roughness1_0__4, prefiltered_roughness1_0__5].map(url => loadAssetFromURL(url)));
+        let skyboxFaces = await Promise.all(
+            [skybox0, skybox1, skybox2, skybox3, skybox4, skybox5].map((url) =>
+                loadAssetFromURL(url)
+            )
+        );
+        let irradianceFaces = await Promise.all(
+            [
+                irradiance0,
+                irradiance1,
+                irradiance2,
+                irradiance3,
+                irradiance4,
+                irradiance5,
+            ].map((url) => loadAssetFromURL(url))
+        );
+        let prefiltered_roughness0_0Faces = await Promise.all(
+            [
+                prefiltered_roughness0_0__0,
+                prefiltered_roughness0_0__1,
+                prefiltered_roughness0_0__2,
+                prefiltered_roughness0_0__3,
+                prefiltered_roughness0_0__4,
+                prefiltered_roughness0_0__5,
+            ].map((url) => loadAssetFromURL(url))
+        );
+        let prefiltered_roughness0_2Faces = await Promise.all(
+            [
+                prefiltered_roughness0_2__0,
+                prefiltered_roughness0_2__1,
+                prefiltered_roughness0_2__2,
+                prefiltered_roughness0_2__3,
+                prefiltered_roughness0_2__4,
+                prefiltered_roughness0_2__5,
+            ].map((url) => loadAssetFromURL(url))
+        );
+        let prefiltered_roughness0_5Faces = await Promise.all(
+            [
+                prefiltered_roughness0_5__0,
+                prefiltered_roughness0_5__1,
+                prefiltered_roughness0_5__2,
+                prefiltered_roughness0_5__3,
+                prefiltered_roughness0_5__4,
+                prefiltered_roughness0_5__5,
+            ].map((url) => loadAssetFromURL(url))
+        );
+        let prefiltered_roughness0_7Faces = await Promise.all(
+            [
+                prefiltered_roughness0_7__0,
+                prefiltered_roughness0_7__1,
+                prefiltered_roughness0_7__2,
+                prefiltered_roughness0_7__3,
+                prefiltered_roughness0_7__4,
+                prefiltered_roughness0_7__5,
+            ].map((url) => loadAssetFromURL(url))
+        );
+        let prefiltered_roughness1_0Faces = await Promise.all(
+            [
+                prefiltered_roughness1_0__0,
+                prefiltered_roughness1_0__1,
+                prefiltered_roughness1_0__2,
+                prefiltered_roughness1_0__3,
+                prefiltered_roughness1_0__4,
+                prefiltered_roughness1_0__5,
+            ].map((url) => loadAssetFromURL(url))
+        );
         console.log('loaded background');
 
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
@@ -149,7 +203,7 @@ export default class MeshDisplay {
             gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
             gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
             gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-            gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
+            gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
         ];
 
         const sideColors = [
@@ -179,7 +233,17 @@ export default class MeshDisplay {
             const internalFormat = gl.RGBA;
             const format = gl.RGBA;
             const type = gl.UNSIGNED_BYTE;
-            gl.texImage2D(sides[i], level, internalFormat, image.width, image.height, 0, format, type, pixels);
+            gl.texImage2D(
+                sides[i],
+                level,
+                internalFormat,
+                image.width,
+                image.height,
+                0,
+                format,
+                type,
+                pixels
+            );
         }
 
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -205,11 +269,29 @@ export default class MeshDisplay {
             const internalFormat = gl.RGBA;
             const format = gl.RGBA;
             const type = gl.FLOAT;
-            gl.texImage2D(sides[i], level, internalFormat, image.width, image.height, 0, format, type, pixels);
+            gl.texImage2D(
+                sides[i],
+                level,
+                internalFormat,
+                image.width,
+                image.height,
+                0,
+                format,
+                type,
+                pixels
+            );
         }
 
-        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(
+            gl.TEXTURE_CUBE_MAP,
+            gl.TEXTURE_MIN_FILTER,
+            gl.NEAREST
+        );
+        gl.texParameteri(
+            gl.TEXTURE_CUBE_MAP,
+            gl.TEXTURE_MAG_FILTER,
+            gl.NEAREST
+        );
 
         if (brdf_lut.type != AssetType.Image) {
             throw new Error('BRDF must be an image');
@@ -225,7 +307,10 @@ export default class MeshDisplay {
         ];
 
         for (let level = 0; level < prefilteredLevels.length; level++) {
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.prefilteredTextures[level]);
+            gl.bindTexture(
+                gl.TEXTURE_CUBE_MAP,
+                this.prefilteredTextures[level]
+            );
 
             let prefilteredFaces = prefilteredLevels[level];
             for (let i = 0; i < prefilteredFaces.length; i++) {
@@ -239,18 +324,36 @@ export default class MeshDisplay {
                 if (image.storage.type != ImageStorage.Float32) {
                     throw new Error('prefiltered environment should be HDR');
                 }
-    
+
                 let pixels = image.storage.pixels;
-    
+
                 const mipLevel = 0;
                 const internalFormat = gl.RGBA;
                 const format = gl.RGBA;
                 const type = gl.FLOAT;
-                gl.texImage2D(sides[i], mipLevel, internalFormat, image.width, image.height, 0, format, type, pixels);
+                gl.texImage2D(
+                    sides[i],
+                    mipLevel,
+                    internalFormat,
+                    image.width,
+                    image.height,
+                    0,
+                    format,
+                    type,
+                    pixels
+                );
             }
 
-            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(
+                gl.TEXTURE_CUBE_MAP,
+                gl.TEXTURE_MIN_FILTER,
+                gl.NEAREST
+            );
+            gl.texParameteri(
+                gl.TEXTURE_CUBE_MAP,
+                gl.TEXTURE_MAG_FILTER,
+                gl.NEAREST
+            );
         }
 
         this.backgroundLoaded = true;
@@ -278,14 +381,17 @@ export default class MeshDisplay {
         }
 
         if (mesh) {
-            mesh.draw(gl, view, projection, this.irradianceTexture, this.prefilteredTextures, this.brdfTexture);
+            mesh.draw(
+                gl,
+                view,
+                projection,
+                this.irradianceTexture,
+                this.prefilteredTextures,
+                this.brdfTexture
+            );
         }
 
-        // this.drawCube(gl, view, projection, [0, 0, 0], 0.4);
-        this.drawCube(gl, view, projection, [0, 1, 0], 0.4);
-
         if (brushCursor) {
-            // TODO: move UI gizmos to a later pass so they're not tonemapped
             this.drawCube(gl, view, projection, brushCursor, 0.4);
         }
 
@@ -299,16 +405,6 @@ export default class MeshDisplay {
         widgetProps: any
     ) {
         const gl = windowManager.gl;
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-        gl.clearColor(0.2, 0.2, 0.2, 1.0);
-        gl.clearDepth(1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         this.drawMainPass(gl, width, height, windowManager.mesh, widgetProps);
     }
