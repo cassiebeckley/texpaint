@@ -218,15 +218,6 @@ export default class MeshDisplay {
             gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
         ];
 
-        const sideColors = [
-            new Float32Array([1.0, 0, 0, 1.0]),
-            new Float32Array([0.5, 0, 0, 1.0]),
-            new Float32Array([0, 1.0, 0, 1.0]),
-            new Float32Array([0, 0.5, 0, 1.0]),
-            new Float32Array([0, 0, 1.0, 1.0]),
-            new Float32Array([0, 0, 0.5, 1.0]),
-        ];
-
         for (let i = 0; i < skyboxFaces.length; i++) {
             let face = skyboxFaces[i];
             if (face.type !== AssetType.Image) {

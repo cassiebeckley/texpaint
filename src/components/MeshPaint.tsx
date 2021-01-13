@@ -11,6 +11,7 @@ import {
 import { normalizeWheelEvent } from '../utils';
 import MeshDisplay, { getProjection, getView } from '../widgets/meshDisplay';
 import Widget, { WindowContext } from './Widget';
+import BackgroundSettings from './BackgroundSettings';
 
 const BINARY_LEFT_MOUSE_BUTTON = 0b1;
 const BINARY_MIDDLE_MOUSE_BUTTON = 0b10;
@@ -34,6 +35,8 @@ export default function MeshPaint({}) {
     const [backgroundOffset, setBackgroundOffset] = useState(0);
     const [rotatingBackground, setRotatingBackground] = useState(false);
     const [lastBackgroundOffset, setLastBackgroundOffset] = useState(0);
+
+    const [preventContext, setPreventContext] = useState(false);
 
     const [position, setPosition] = useState(vec3.create());
     const [pan, setPan] = useState(false);
@@ -110,6 +113,10 @@ export default function MeshPaint({}) {
         
         setBackgroundOffset(backgroundOffset + deltaAngle);
         setLastBackgroundOffset(x);
+
+        if (!preventContext) {
+            setPreventContext(true);
+        }
     }
 
     const handlePanStart = (panPosition: vec3) => {
@@ -243,6 +250,13 @@ export default function MeshPaint({}) {
         handleRotateBackgroundStop();
     };
 
+    const handleContextMenu = (e: React.MouseEvent) => {
+        if (preventContext) {
+            e.preventDefault();
+            setPreventContext(false);
+        }
+    };
+
     let cursor = 'auto';
 
     if (rotating) {
@@ -250,6 +264,9 @@ export default function MeshPaint({}) {
     } else if (pan) {
         cursor = 'grabbing';
     }
+
+    const rotationMatrix = mat4.create();
+    mat4.fromQuat(rotationMatrix, rotation);
 
     return (
         <div style={{ flexGrow: 1 }} ref={div}>
@@ -267,14 +284,19 @@ export default function MeshPaint({}) {
                     ),
                     backgroundOffset,
                 }}
-                style={{ height: '100%', cursor }}
+                style={{ height: '100%', cursor, position: 'relative' }}
                 onWheel={handleWheel}
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
                 onPointerMove={handlePointerMove}
                 onPointerLeave={handlePointerLeave}
-                onContextMenu={e => e.preventDefault()}
-            ></Widget>
+                onContextMenu={handleContextMenu}
+            >
+                <div style={{position: 'absolute', right: '20px', bottom: '20px', top: '20px', width: '150px'}}>
+                    <BackgroundSettings rotation={rotationMatrix} backgroundOffset={backgroundOffset} />
+                    <div style={{position: 'absolute', bottom: '0px', width: '100%', height: '150px', backgroundColor: 'red'}}></div>
+                </div>
+            </Widget>
         </div>
     );
 }

@@ -40,6 +40,7 @@ const POINTER_EVENTS = [
 export default function Widget({
     constructor,
     widgetProps,
+    className = '',
     zindex = 0,
     ...props
 }) {
@@ -108,7 +109,7 @@ export default function Widget({
     }
 
     return (
-        <div {...props} ref={div} className={`widget ${props.className}`}></div>
+        <div {...props} ref={div} className={`widget ${className}`}></div>
     );
 }
 

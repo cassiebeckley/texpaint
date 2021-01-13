@@ -1,7 +1,7 @@
 import { vec3 } from 'gl-matrix';
 import * as React from 'react';
 import { useContext, useState } from 'react';
-import { SELECTOR_COLOR } from '../constants';
+import { HALF_COLOR } from '../constants';
 import ColorWheel from './ColorWheel';
 import { WindowContext } from './Widget';
 
@@ -17,10 +17,12 @@ export default function BrushMaterial() {
     vec3.mul(color, brushColor, [255, 255, 255]);
     vec3.round(color, color);
 
+    // TODO: use http://danielstern.ca/range.css/ to style the range inputs
+
     return (
         <div
             className="color-select"
-            style={{ backgroundColor: showMaterialSelector && SELECTOR_COLOR }}
+            style={{ backgroundColor: showMaterialSelector && HALF_COLOR }}
         >
             <button
                 className="brush-color"
@@ -47,7 +49,7 @@ export default function BrushMaterial() {
                     />
                     <div
                         style={{
-                            backgroundColor: SELECTOR_COLOR,
+                            backgroundColor: HALF_COLOR,
                             padding: '22px',
                             borderRadius: '0 0 10px 10px',
                         }}

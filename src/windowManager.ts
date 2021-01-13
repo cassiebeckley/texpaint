@@ -53,19 +53,6 @@ export default class WindowManager {
 
         this.widgets = new WeakMap();
 
-        // for (let i = 0; i < widgets.length; i++) {
-        //     const WidgetConstructor = widgets[i];
-        //     const widget = new WidgetConstructor();
-
-        //     widget.initGL(this.gl).then((redraw) => {
-        //         if (redraw) {
-        //             this.drawOnNextFrame();
-        //         }
-        //     });
-
-        //     this.widgets.set(WidgetConstructor, widget);
-        // }
-
         const handleResize = () => {
             this.drawOnNextFrame();
         };

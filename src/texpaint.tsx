@@ -93,8 +93,8 @@ const TopBar = ({ on2d, on3d }) => {
 
     return (
         <div className="top-bar">
-            <button onClick={on2d}>2D Texture</button>
-            <button onClick={on3d}>3D Object</button>
+            <button onClick={on2d}>2D</button>
+            <button onClick={on3d}>3D</button>
             <button onClick={handleOpen}>Open</button>
             <div style={{ flexGrow: 1, textAlign: 'right' }}>
                 <BrushMaterial />

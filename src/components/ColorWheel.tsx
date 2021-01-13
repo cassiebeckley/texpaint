@@ -158,7 +158,7 @@ export default function ColorWheel({ brushColor, setBrushColor }) {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            zindex={1}
+            zindex={2}
         >
             <div
                 style={{
