@@ -9,7 +9,7 @@ import {
     SCROLL_SCALE,
 } from '../constants';
 import { normalizeWheelEvent } from '../utils';
-import { getProjection, getView } from '../widgets/meshDisplay';
+import MeshDisplay, { getProjection, getView } from '../widgets/meshDisplay';
 import Widget, { WindowContext } from './Widget';
 
 const BINARY_LEFT_MOUSE_BUTTON = 0b1;
@@ -31,11 +31,16 @@ export default function MeshPaint({}) {
     const [rotating, setRotating] = useState(false);
     const [lastRotatePosition, setLastRotatePosition] = useState(vec3.create());
 
+    const [backgroundOffset, setBackgroundOffset] = useState(0);
+    const [rotatingBackground, setRotatingBackground] = useState(false);
+    const [lastBackgroundOffset, setLastBackgroundOffset] = useState(0);
+
     const [position, setPosition] = useState(vec3.create());
     const [pan, setPan] = useState(false);
     const [lastPanPosition, setLastPanPosition] = useState(vec3.create());
 
     const [paintPoint, setPaintPoint] = useState(null);
+    const [paintNormal, setPaintNormal] = useState(null);
     const [pressure, setPressure] = useState(1.0);
 
     const div = useRef(null);
@@ -91,6 +96,22 @@ export default function MeshPaint({}) {
         setLastRotatePosition(vec3.clone(rotatePosition));
     };
 
+    const handleRotateBackgroundStart = (x: number) => {
+        setRotatingBackground(true);
+        setLastBackgroundOffset(x);
+    }
+
+    const handleRotateBackgroundStop = () => {
+        setRotatingBackground(false);
+    }
+
+    const handleRotateBackgroundMove = (x: number) => {
+        const deltaAngle = (lastBackgroundOffset - x) * -ROTATE_SENSITIVITY;
+        
+        setBackgroundOffset(backgroundOffset + deltaAngle);
+        setLastBackgroundOffset(x);
+    }
+
     const handlePanStart = (panPosition: vec3) => {
         setPan(true);
         setLastPanPosition(vec3.clone(panPosition));
@@ -122,9 +143,11 @@ export default function MeshPaint({}) {
             } else {
                 handleRotateStart(coords);
             }
-        } else if (e.button === 0) {
-            // windowManager.brushEngine.startStroke3D(paintPoint, e.pressure);
+        } else if (e.button === 0 && paintPoint) {
+            windowManager.brushEngine.startStroke3D(paintPoint, e.pressure);
             setPressure(e.pressure);
+        } else if (e.button === 2) {
+            handleRotateBackgroundStart(e.clientX);
         }
     };
 
@@ -136,9 +159,11 @@ export default function MeshPaint({}) {
             handleRotateStop();
         } else if (pan) {
             handlePanStop();
-        } else if (e.button === 0) {
-            // windowManager.brushEngine.finishStroke3D(paintPoint, e.pressure);
+        } else if (e.button === 0 && paintPoint) {
+            windowManager.brushEngine.finishStroke3D(paintPoint, e.pressure);
             setPressure(1);
+        } else if (rotatingBackground) {
+            handleRotateBackgroundStop();
         }
     };
 
@@ -150,10 +175,11 @@ export default function MeshPaint({}) {
             handleRotateMove(coords);
         } else if (pan) {
             handlePanMove(coords);
-        } else if (e.buttons & BINARY_LEFT_MOUSE_BUTTON) {
-            // const imageCoords = uiToImageCoordinates(coords);
-            // windowManager.brushEngine.continueStroke3D(imageCoords, e.pressure);
+        } else if (e.buttons & BINARY_LEFT_MOUSE_BUTTON && paintPoint) {
+            windowManager.brushEngine.continueStroke3D(paintPoint, e.pressure);
             setPressure(e.pressure);
+        } else if (rotatingBackground) {
+            handleRotateBackgroundMove(e.clientX);
         }
 
         // get the ray from the camera for the current pixel
@@ -161,9 +187,13 @@ export default function MeshPaint({}) {
 
         const view = mat4.create();
         const proj = mat4.create();
-        const invProjView = mat4.create();
         getView(view, position, rotation, scale);
         getProjection(proj, widgetBounds.width, widgetBounds.height);
+
+        const invView = mat4.create();
+        mat4.invert(invView, view);
+
+        const invProjView = mat4.create();
         mat4.mul(invProjView, proj, view);
         mat4.invert(invProjView, invProjView);
 
@@ -171,9 +201,7 @@ export default function MeshPaint({}) {
         const ndcY = -(((coords[1] + 0.5) / widgetBounds.height) * 2 - 1);
 
         const camOrigin = vec3.create();
-        vec3.set(camOrigin, ndcX, ndcY, -1);
-        vec3.scale(camOrigin, camOrigin, NEAR);
-        vec3.transformMat4(camOrigin, camOrigin, invProjView);
+        vec3.transformMat4(camOrigin, camOrigin, invView);
 
         const rayBase = vec4.create();
         vec4.set(
@@ -191,10 +219,20 @@ export default function MeshPaint({}) {
 
         if (windowManager.mesh) {
             const point = vec3.create();
-            if (windowManager.mesh.raycast(point, camOrigin, camDirection)) {
+            const normal = vec3.create();
+            if (
+                windowManager.mesh.raycast(
+                    point,
+                    normal,
+                    camOrigin,
+                    camDirection
+                )
+            ) {
                 setPaintPoint(point);
+                setPaintNormal(normal);
             } else {
                 setPaintPoint(null);
+                setPaintNormal(null);
             }
         }
     };
@@ -202,6 +240,7 @@ export default function MeshPaint({}) {
     const handlePointerLeave = (e: React.PointerEvent) => {
         handleRotateStop();
         handlePanStop();
+        handleRotateBackgroundStop();
     };
 
     let cursor = 'auto';
@@ -215,12 +254,18 @@ export default function MeshPaint({}) {
     return (
         <div style={{ flexGrow: 1 }} ref={div}>
             <Widget
-                type="MeshDisplay"
+                constructor={MeshDisplay}
                 widgetProps={{
                     position,
                     rotation,
                     scale,
                     brushCursor: paintPoint,
+                    brushNormal: paintNormal,
+                    brushRadius: windowManager.brushEngine.getRadiusForStroke(
+                        windowManager.brushEngine.radius,
+                        { pressure }
+                    ),
+                    backgroundOffset,
                 }}
                 style={{ height: '100%', cursor }}
                 onWheel={handleWheel}
@@ -228,6 +273,7 @@ export default function MeshPaint({}) {
                 onPointerUp={handlePointerUp}
                 onPointerMove={handlePointerMove}
                 onPointerLeave={handlePointerLeave}
+                onContextMenu={e => e.preventDefault()}
             ></Widget>
         </div>
     );

@@ -1,21 +1,102 @@
 // At the moment this represents a single-layer, editable image
 // We're going to want everything to work in a linear space internally
 
-import BrushEngine from './brushEngine';
-import Image, { ImageFormat, ImageStorage } from './loader/image';
+import Image from './loader/image';
 import WindowManager, { loadTextureFromImage } from './windowManager';
-import loadShaderProgram, { Shader } from './shaders';
 
-import vertCompositeShader from 'url:./shaders/compositeShader/vert.glsl';
-import fragCompositeShader from 'url:./shaders/compositeShader/frag.glsl';
-import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
-import { mat4, vec3 } from 'gl-matrix';
+import { vec3 } from 'gl-matrix';
 import { srgbToRgb } from './color';
 import Compositor, { createLayerTexture, fillTexture, O } from './compositor';
 
-enum CompositeMode {
-    Normal = 0,
-    Multiply = 1,
+const DEFAULT_ALBEDO = 0.8;
+const DEFAULT_ALBEDO_BYTE = Math.round(DEFAULT_ALBEDO * 255);
+const DEFAULT_ROUGHNESS = 0.5;
+const DEFAULT_METALLIC = 0.0;
+
+class Layer {
+    albedo: WebGLTexture;
+    roughness: WebGLTexture;
+    metallic: WebGLTexture;
+
+    constructor(
+        gl: WebGLRenderingContext,
+        width: number,
+        height: number,
+        fillColor?: Uint8ClampedArray,
+        fillRoughness?: number,
+        fillMetallic?: number
+    ) {
+        this.albedo = createLayerTexture(gl, width, height, fillColor);
+
+        const roughnessByte = fillRoughness * 255; // TODO: go over all the places float colors are converted to bytes and adjust mapped range
+        const metallicByte = fillMetallic * 255;
+        this.roughness = createLayerTexture(
+            gl,
+            width,
+            height,
+            new Uint8ClampedArray([
+                roughnessByte,
+                roughnessByte,
+                roughnessByte,
+                255,
+            ])
+        );
+        this.metallic = createLayerTexture(
+            gl,
+            width,
+            height,
+            new Uint8ClampedArray([
+                metallicByte,
+                metallicByte,
+                metallicByte,
+                255,
+            ])
+        );
+    }
+
+    fill(
+        gl: WebGLRenderingContext,
+        width: number,
+        height: number,
+        fillColor: Uint8ClampedArray,
+        fillRoughness: number,
+        fillMetallic: number
+    ) {
+        fillTexture(gl, this.albedo, width, height, fillColor);
+
+        const roughnessByte = fillRoughness * 255;
+        const metallicByte = fillMetallic * 255;
+        fillTexture(
+            gl,
+            this.roughness,
+            width,
+            height,
+            new Uint8ClampedArray([
+                roughnessByte,
+                roughnessByte,
+                roughnessByte,
+                255,
+            ])
+        );
+        fillTexture(
+            gl,
+            this.metallic,
+            width,
+            height,
+            new Uint8ClampedArray([
+                metallicByte,
+                metallicByte,
+                metallicByte,
+                255,
+            ])
+        );
+    }
+
+    delete(gl: WebGLRenderingContext) {
+        gl.deleteTexture(this.albedo);
+        gl.deleteTexture(this.roughness);
+        gl.deleteTexture(this.metallic);
+    }
 }
 
 export default class Slate {
@@ -25,20 +106,26 @@ export default class Slate {
     width: number;
     height: number;
 
-    history: WebGLTexture[];
+    history: Layer[];
     historyIndex: number;
 
     private updated: boolean;
 
-    private committedAlbedo: WebGLTexture;
+    private layer: Layer;
+
     albedo: WebGLTexture;
+    roughness: WebGLTexture;
+    metallic: WebGLTexture;
+
     currentOperation: WebGLTexture;
 
     private brushAlbedo: WebGLTexture;
 
     compositor: Compositor;
 
-    // texture:
+    private brushRoughnessTexture: WebGLTexture;
+    private brushMetallicTexture: WebGLTexture;
+
     constructor(wm: WindowManager, width: number, height: number) {
         this.windowManager = wm;
         this.gl = wm.gl;
@@ -48,15 +135,21 @@ export default class Slate {
 
         this.updated = true;
 
-        const c = Math.round(0.8 * 255);
+        const c = DEFAULT_ALBEDO_BYTE;
 
-        this.committedAlbedo = createLayerTexture(
+        this.layer = new Layer(
             this.gl,
             this.width,
             this.height,
-            new Uint8ClampedArray([c, c, c, 255])
+            new Uint8ClampedArray([c, c, c, 255]),
+            DEFAULT_ROUGHNESS,
+            DEFAULT_METALLIC
         );
+
         this.albedo = createLayerTexture(this.gl, this.width, this.height);
+        this.roughness = createLayerTexture(this.gl, this.width, this.height);
+        this.metallic = createLayerTexture(this.gl, this.width, this.height);
+
         this.currentOperation = createLayerTexture(
             this.gl,
             this.width,
@@ -65,11 +158,13 @@ export default class Slate {
         );
 
         this.history = [
-            createLayerTexture(
+            new Layer(
                 this.gl,
                 this.width,
                 this.height,
-                new Uint8ClampedArray([c, c, c, 255])
+                new Uint8ClampedArray([c, c, c, 255]),
+                DEFAULT_ROUGHNESS,
+                DEFAULT_METALLIC
             ),
         ];
         this.historyIndex = 0;
@@ -77,79 +172,61 @@ export default class Slate {
         const gl = this.gl;
 
         this.brushAlbedo = gl.createTexture();
+        this.brushRoughnessTexture = gl.createTexture();
+        this.brushMetallicTexture = gl.createTexture();
+
+        this.brushColor = vec3.create();
+        this.brushRoughness = DEFAULT_ROUGHNESS;
+        this.brushMetallic = DEFAULT_METALLIC;
 
         this.compositor = new Compositor(wm, width, height);
     }
 
-    set color(sRgb: vec3) {
+    set brushColor(sRgb: vec3) {
         const [r, g, b] = sRgb.map(srgbToRgb);
-        const buffer = new Uint8ClampedArray([r * 255, g * 255, b * 255, 255]);
-
-        const gl = this.gl;
-
-        gl.bindTexture(gl.TEXTURE_2D, this.brushAlbedo);
-
-        const level = 0;
-        const internalFormat = gl.RGBA;
-        const format = gl.RGBA;
-        const border = 0;
-        const type = gl.UNSIGNED_BYTE;
-
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            level,
-            internalFormat,
+        fillTexture(
+            this.gl,
+            this.brushAlbedo,
             1,
             1,
-            border,
-            format,
-            type,
-            buffer
+            new Uint8ClampedArray([r * 255, g * 255, b * 255, 255])
         );
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
 
-    load(image: Image) {
-        // TODO: image to texture
-        // switch (image.storage.type) {
-        //     case ImageStorage.Uint8:
-        //         this.albedoBuffer = image.storage.pixels;
-        //         break;
-        //     case ImageStorage.Float32:
-        //         this.albedoBuffer = new Uint8ClampedArray(image.width * image.height * 4);
+    set brushRoughness(roughness: number) {
+        const roughnessByte = roughness * 255;
+        fillTexture(this.gl, this.brushRoughnessTexture, 1, 1, new Uint8ClampedArray([roughnessByte, roughnessByte, roughnessByte, 255]));
+    }
 
-        //         let pixelWidth = 4;
-        //         if (image.format === ImageFormat.RGB) {
-        //             pixelWidth = 3;
-        //         }
+    set brushMetallic(metallic: number) {
+        const metallicByte = metallic * 255;
+        fillTexture(this.gl, this.brushMetallicTexture, 1, 1, new Uint8ClampedArray([metallicByte, metallicByte, metallicByte, 255]));
+    }
 
-        //         let destIndex = 0;
-
-        //         for (let i = 0; i < image.storage.pixels.length;) {
-        //             const r = image.storage.pixels[i++];
-        //             const g = image.storage.pixels[i++];
-        //             const b = image.storage.pixels[i++];
-
-        //             let a = 1;
-
-        //             if (pixelWidth > 3) {
-        //                 a = image.storage.pixels[i++];
-        //             }
-
-        //             this.albedoBuffer[destIndex++] = r * 255;
-        //             this.albedoBuffer[destIndex++] = g * 255;
-        //             this.albedoBuffer[destIndex++] = b * 255;
-        //             this.albedoBuffer[destIndex++] = a * 255;
-        //         }
-        //         break;
-        // }
+    loadAlbedo(image: Image) {
+        // TODO: add options to load metallic and roughness textures
         this.width = image.width;
         this.height = image.height;
 
+        this.compositor.setDimensions(image.width, image.height);
+
+        fillTexture(this.gl, this.layer.albedo, image.width, image.height);
+        fillTexture(this.gl, this.albedo, image.width, image.height);
+        fillTexture(
+            this.gl,
+            this.currentOperation,
+            image.width,
+            image.height,
+            new Uint8ClampedArray([0, 0, 0, 255])
+        );
+
+        const tmp = this.gl.createTexture();
+        loadTextureFromImage(this.gl, tmp, image);
+        this.compositor.run(this.layer.albedo, O(tmp).mix(tmp));
+        this.gl.deleteTexture(tmp);
+
         this.resetHistory();
+        this.markUpdate();
     }
 
     markUpdate() {
@@ -161,38 +238,61 @@ export default class Slate {
         for (let i = 0; i < this.history.length; i++) {
             this.gl.deleteTexture(this.history[i]);
         }
-        this.history = [];
+        this.history = [this.layer];
         this.historyIndex = 0;
     }
 
-    // TODO: make undo history work with textures
+    // TODO: undo history is glitchy; figure out why
 
     // Undo history
     apply() {
-        O(this.committedAlbedo)
-            .mix(O(this.brushAlbedo).mask(this.currentOperation))
-            .run(this.compositor, this.albedo);
+        this.compositor.run(
+            this.albedo,
+            O(this.layer.albedo).mix(
+                O(this.brushAlbedo).mask(this.currentOperation)
+            )
+        );
 
-        fillTexture(this.gl, this.currentOperation, this.width, this.height);
+        this.compositor.run(
+            this.roughness,
+            O(this.layer.roughness).mix(
+                O(this.brushRoughnessTexture).mask(this.currentOperation)
+            )
+        );
 
-        this.committedAlbedo = createLayerTexture(
+        this.compositor.run(
+            this.metallic,
+            O(this.layer.metallic).mix(
+                O(this.brushMetallicTexture).mask(this.currentOperation)
+            )
+        );
+
+        fillTexture(
+            this.gl,
+            this.currentOperation,
+            this.width,
+            this.height,
+            new Uint8ClampedArray([0, 0, 0, 255])
+        );
+
+        this.layer = new Layer(
             this.gl,
             this.width,
             this.height
         );
 
-        O(this.albedo)
-            .mix(this.albedo)
-            .run(this.compositor, this.committedAlbedo);
+        this.compositor.run(this.layer.albedo, O(this.albedo).mix(this.albedo));
+        this.compositor.run(this.layer.roughness, O(this.roughness).mix(this.roughness));
+        this.compositor.run(this.layer.metallic, O(this.metallic).mix(this.metallic));
 
         // save image state in undo queue
 
         for (let i = this.historyIndex + 1; i < this.history.length; i++) {
-            this.gl.deleteTexture(this.history[i]);
+            this.history[i].delete(this.gl);
         }
         this.history.length = this.historyIndex + 1;
 
-        this.history.push(this.committedAlbedo);
+        this.history.push(this.layer);
         this.historyIndex++;
 
         this.windowManager.drawOnNextFrame();
@@ -204,7 +304,7 @@ export default class Slate {
         }
         if (this.historyIndex > 0) {
             this.historyIndex--;
-            this.committedAlbedo = this.history[this.historyIndex];
+            this.layer = this.history[this.historyIndex];
             this.markUpdate();
         }
     }
@@ -212,7 +312,7 @@ export default class Slate {
     redo() {
         if (this.historyIndex < this.history.length - 1) {
             this.historyIndex++;
-            this.committedAlbedo = this.history[this.historyIndex];
+            this.layer = this.history[this.historyIndex];
             this.markUpdate();
         }
     }
@@ -223,8 +323,27 @@ export default class Slate {
         }
         this.updated = false;
 
-        O(this.committedAlbedo)
-            .mix(O(this.brushAlbedo).mask(this.currentOperation))
-            .run(this.compositor, this.albedo);
+        this.compositor.run(
+            this.albedo,
+            O(this.layer.albedo).mix(
+                O(this.brushAlbedo).mask(this.currentOperation)
+            )
+        );
+
+        this.compositor.run(
+            this.roughness,
+            O(this.layer.roughness).mix(
+                O(this.brushRoughnessTexture).mask(this.currentOperation)
+            )
+        );
+
+        this.compositor.run(
+            this.metallic,
+            O(this.layer.metallic).mix(
+                O(this.brushMetallicTexture).mask(this.currentOperation)
+            )
+        );
+
+        // this.compositor.run(this.albedo, O(this.metallic).mix(this.metallic));
     }
 }

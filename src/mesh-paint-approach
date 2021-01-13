@@ -4,3 +4,11 @@ Raycast from camera to determine point of closest intersection
 Create bounding cube with width brushRadius * 2
 Find all triangles intersecting bounding cube (maybe clip?)
 For each texel in each triangle, find world space coordinates and run brush shade function for them
+
+Current approach:
+
+Future approach:
+Current method shades all texels inside brush radius, even if they are occluded from the brush origin. This is likely not what most users would want or expect, and it is not how most existing tools behave.
+Instead, assuming a brush originating at raycast intersection with direction that is the inverse of raycast normal:
+* Render an occlusion depth map from the perspective of the brush
+* Render UV map with a brush shade function that discards pixels further away in world-space coordinates than corresponding pixel in depth map

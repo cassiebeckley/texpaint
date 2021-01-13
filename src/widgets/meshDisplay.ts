@@ -1,8 +1,13 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
-import { CUBE_INDICES, CUBE_LINE_INDICES, CUBE_VERTICES } from '../primitives';
+import {
+    CUBE_INDICES,
+    CUBE_LINE_INDICES,
+    CUBE_VERTICES,
+    generateCircleVertices,
+} from '../primitives';
 import WindowManager, { loadTextureFromImage } from '../windowManager';
 
-import loadShaderProgram, { Shader } from '../shaders';
+import ShaderSource, { Shader } from '../shaders';
 
 import brdf_lut_url from 'url:../assets/brdf_smith_schlick_ggx.exr';
 
@@ -55,22 +60,27 @@ import skybox3 from 'url:../assets/backgrounds/forest_slope/skybox3.png';
 import skybox4 from 'url:../assets/backgrounds/forest_slope/skybox4.png';
 import skybox5 from 'url:../assets/backgrounds/forest_slope/skybox5.png';
 
-import vertUVShader from '../shaders/uvShader/vert.glsl';
-import fragUVShader from '../shaders/uvShader/frag.glsl';
+import vertUVShader from '../shaders/uv.shader/vert.glsl';
+import fragUVShader from '../shaders/uv.shader/frag.glsl';
 
-import vertBackgroundShader from '../shaders/workspace/backgroundShader/vert.glsl';
-import fragBackgroundShader from '../shaders/workspace/backgroundShader/frag.glsl';
+import vertBackgroundShader from '../shaders/workspace/background.shader/vert.glsl';
+import fragBackgroundShader from '../shaders/workspace/background.shader/frag.glsl';
 
-import { FIELD_OF_VIEW } from '../constants';
+import { FAR, FIELD_OF_VIEW, NEAR } from '../constants';
 import Mesh from '../mesh';
 import { loadAssetFromURL } from '../loader';
 import { AssetType } from '../loader/asset';
 import { ImageStorage } from '../loader/image';
 
+const UP = vec3.create();
+vec3.set(UP, 0, 1, 0);
+
 export default class MeshDisplay {
     cubeBuffer: WebGLBuffer;
     cubeIndexBuffer: WebGLBuffer;
-    cubeLineIndexBuffer: WebGLBuffer;
+
+    circleBuffer: WebGLBuffer;
+    circleCount: number;
 
     lineShader: Shader;
 
@@ -78,7 +88,6 @@ export default class MeshDisplay {
     skyboxTexture: WebGLTexture;
     brdfTexture: WebGLTexture;
     irradianceTexture: WebGLTexture;
-    // prefilteredTexture: WebGLTexture;
     prefilteredTextures: WebGLTexture[];
     backgroundShader: Shader;
 
@@ -110,21 +119,24 @@ export default class MeshDisplay {
             gl.STATIC_DRAW
         );
 
-        this.cubeLineIndexBuffer = gl.createBuffer();
+        this.circleCount = 16;
+        this.circleBuffer = gl.createBuffer();
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeLineIndexBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.circleBuffer);
         gl.bufferData(
-            gl.ELEMENT_ARRAY_BUFFER,
-            new Uint16Array(CUBE_LINE_INDICES),
+            gl.ARRAY_BUFFER,
+            new Float32Array(generateCircleVertices(this.circleCount)),
             gl.STATIC_DRAW
         );
 
-        this.backgroundShader = loadShaderProgram(
-            gl,
+        const backgroundSource = new ShaderSource(
+            'background',
             vertBackgroundShader,
             fragBackgroundShader
         );
-        this.lineShader = loadShaderProgram(gl, vertUVShader, fragUVShader);
+        this.backgroundShader = backgroundSource.load(gl);
+        const lineSource = new ShaderSource('uv', vertUVShader, fragUVShader);
+        this.lineShader = lineSource.load(gl);
 
         let brdf_lut = await loadAssetFromURL(brdf_lut_url);
 
@@ -366,7 +378,7 @@ export default class MeshDisplay {
         width: number,
         height: number,
         mesh: Mesh,
-        { position, rotation, scale, brushCursor }
+        { position, rotation, scale, brushCursor, brushNormal, brushRadius, backgroundOffset }
     ) {
         gl.enable(gl.DEPTH_TEST);
 
@@ -377,22 +389,42 @@ export default class MeshDisplay {
         getProjection(projection, width, height);
 
         if (this.backgroundLoaded) {
-            // this.drawBackground(gl, rotation, projection);
+            // this.drawBackground(gl, rotation, projection, backgroundOffset);
         }
 
         if (mesh) {
+            const backgroundMatrix = mat4.create();
+            mat4.identity(backgroundMatrix);
+            mat4.rotateY(backgroundMatrix, backgroundMatrix, -backgroundOffset);
+
             mesh.draw(
                 gl,
                 view,
                 projection,
                 this.irradianceTexture,
                 this.prefilteredTextures,
-                this.brdfTexture
+                this.brdfTexture,
+                backgroundMatrix
             );
         }
 
         if (brushCursor) {
-            this.drawCube(gl, view, projection, brushCursor, 0.4);
+            this.drawCircle(
+                gl,
+                view,
+                projection,
+                brushCursor,
+                brushNormal,
+                brushRadius / 50
+            );
+            this.drawCircle(
+                gl,
+                view,
+                projection,
+                brushCursor,
+                brushNormal,
+                0.02
+            );
         }
 
         gl.disable(gl.DEPTH_TEST);
@@ -412,7 +444,8 @@ export default class MeshDisplay {
     drawBackground(
         gl: WebGLRenderingContext,
         rotation: quat,
-        projectionMatrix: mat4
+        projectionMatrix: mat4,
+        backgroundOffset: number,
     ) {
         gl.disable(gl.CULL_FACE);
         gl.useProgram(this.backgroundShader.program);
@@ -428,6 +461,8 @@ export default class MeshDisplay {
 
         const viewMatrix = mat4.create();
         mat4.fromQuat(viewMatrix, rotation);
+
+        mat4.rotateY(viewMatrix, viewMatrix, backgroundOffset);
 
         const modelViewMatrix = mat4.create();
         mat4.mul(modelViewMatrix, viewMatrix, modelMatrix);
@@ -480,15 +515,22 @@ export default class MeshDisplay {
         gl.enable(gl.CULL_FACE);
     }
 
-    drawCube(
+    drawCircle(
         gl: WebGLRenderingContext,
         viewMatrix: mat4,
         projectionMatrix: mat4,
         position: vec3,
+        normal: vec3,
         brushRadius: number
     ) {
         gl.disable(gl.CULL_FACE);
         gl.useProgram(this.lineShader.program);
+
+        const rotation = quat.create();
+        quat.rotationTo(rotation, UP, normal);
+
+        const normalTransform = mat4.create();
+        mat4.fromQuat(normalTransform, rotation);
 
         const modelMatrix = mat4.create();
         mat4.identity(modelMatrix);
@@ -499,6 +541,8 @@ export default class MeshDisplay {
             brushRadius,
             brushRadius,
         ]);
+        mat4.mul(modelMatrix, modelMatrix, normalTransform);
+        mat4.translate(modelMatrix, modelMatrix, [0, 0.1, 0]);
 
         const modelViewMatrix = mat4.create();
         mat4.mul(modelViewMatrix, viewMatrix, modelMatrix);
@@ -521,7 +565,7 @@ export default class MeshDisplay {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.circleBuffer);
             gl.vertexAttribPointer(
                 this.lineShader.attributes.aVertexPosition,
                 size,
@@ -535,14 +579,7 @@ export default class MeshDisplay {
             );
         }
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeLineIndexBuffer);
-
-        gl.drawElements(
-            gl.LINES,
-            CUBE_LINE_INDICES.length,
-            gl.UNSIGNED_SHORT,
-            0
-        );
+        gl.drawArrays(gl.LINE_LOOP, 0, this.circleCount);
 
         gl.enable(gl.CULL_FACE);
     }
@@ -573,5 +610,5 @@ export function getView(
 }
 
 export function getProjection(out: mat4, width: number, height: number) {
-    mat4.perspective(out, FIELD_OF_VIEW, width / height, 0.1, 100.0);
+    mat4.perspective(out, FIELD_OF_VIEW, width / height, NEAR, FAR);
 }

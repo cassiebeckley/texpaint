@@ -1,43 +1,24 @@
-import loadShaderProgram, { Shader } from '../shaders';
+import ShaderSource, { Shader } from '../shaders';
 
-import vertImageShader from '../shaders/imageShader/vert.glsl';
-import fragImageShader from '../shaders/imageShader/frag.glsl';
+import vertImageShader from '../shaders/image.shader/vert.glsl';
+import fragImageShader from '../shaders/image.shader/frag.glsl';
 
-import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
+import { getUnitRectPositionBuffer, getUnitRectUVBuffer } from '../primitives';
 import { mat4 } from 'gl-matrix';
 import WindowManager, { loadTextureFromImage } from '../windowManager';
 
 export default class ImageWidget {
-    imagePositionBuffer: WebGLBuffer;
-
     imageShader: Shader;
-    imageUVBuffer: WebGLBuffer;
 
     imageTexture: WebGLTexture;
 
     async initGL(gl: WebGLRenderingContext) {
-        this.imagePositionBuffer = gl.createBuffer();
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(generateRectVerticesStrip(0, 0, 1, 1)),
-            gl.STATIC_DRAW
-        );
-
-        this.imageShader = loadShaderProgram(
-            gl,
+        const imageSource = new ShaderSource(
+            'image',
             vertImageShader,
             fragImageShader
         );
-
-        this.imageUVBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(rectVerticesStripUV),
-            gl.STATIC_DRAW
-        );
+        this.imageShader = imageSource.load(gl);
 
         this.imageTexture = gl.createTexture();
 
@@ -79,7 +60,7 @@ export default class ImageWidget {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.imagePositionBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, getUnitRectPositionBuffer(gl));
             gl.vertexAttribPointer(
                 shader.attributes.aVertexPosition,
                 size,
@@ -97,7 +78,7 @@ export default class ImageWidget {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.imageUVBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, getUnitRectUVBuffer(gl));
             gl.vertexAttribPointer(
                 shader.attributes.aTextureCoord,
                 size,

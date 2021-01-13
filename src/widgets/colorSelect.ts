@@ -1,40 +1,22 @@
-import loadShaderProgram, { Shader } from '../shaders';
+import ShaderSource, { Shader } from '../shaders';
 
-import vertColorSelectShader from '../shaders/colorSelectShader/vert.glsl';
-import fragColorSelectShader from '../shaders/colorSelectShader/frag.glsl';
+import vertColorSelectShader from '../shaders/colorSelect.shader/vert.glsl';
+import fragColorSelectShader from '../shaders/colorSelect.shader/frag.glsl';
 
-import { generateRectVerticesStrip, rectVerticesStripUV } from '../primitives';
+import { getUnitRectPositionBuffer, getUnitRectUVBuffer } from '../primitives';
 import { mat4 } from 'gl-matrix';
 import WindowManager from '../windowManager';
 
 export default class ColorSelect {
     colorSelectShader: Shader;
 
-    vertexBuffer: WebGLBuffer;
-    uvBuffer: WebGLBuffer;
-
     async initGL(gl: WebGLRenderingContext) {
-        this.colorSelectShader = loadShaderProgram(
-            gl,
+        const colorSource = new ShaderSource(
+            'colorSelect',
             vertColorSelectShader,
             fragColorSelectShader
         );
-
-        this.vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(generateRectVerticesStrip(0, 0, 1, 1)),
-            gl.STATIC_DRAW
-        );
-
-        this.uvBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(rectVerticesStripUV),
-            gl.STATIC_DRAW
-        );
+        this.colorSelectShader = colorSource.load(gl);
 
         return false;
     }
@@ -83,7 +65,7 @@ export default class ColorSelect {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, getUnitRectPositionBuffer(gl));
             gl.vertexAttribPointer(
                 this.colorSelectShader.attributes.aVertexPosition,
                 size,
@@ -103,7 +85,7 @@ export default class ColorSelect {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, getUnitRectUVBuffer(gl));
             gl.vertexAttribPointer(
                 this.colorSelectShader.attributes.aTextureCoord,
                 size,

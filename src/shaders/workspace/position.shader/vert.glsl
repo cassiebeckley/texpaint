@@ -1,17 +1,13 @@
 precision mediump float;
 
 attribute vec4 aVertexPosition;
-attribute vec2 aTextureCoord;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 
-varying highp vec2 vTextureCoord;
-// varying float vPixelWidth;
+varying highp vec3 vWorldPosition;
 
 void main() {
     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-    vTextureCoord = aTextureCoord;
-
-    // vPixelWidth = 1.0 - (uProjectionMatrix * vec4(0.0, 1.0, 0.0, 1.0)).y;
+    vWorldPosition = vec3(aVertexPosition); // IMPORTANT: this is actually model * pos, but since we aren't transforming the model matrix it's the same as model coordinates
 }

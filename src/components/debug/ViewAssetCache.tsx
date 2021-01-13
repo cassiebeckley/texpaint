@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { cacheMap } from '../loader';
-import AssetRenderer from './AssetRenderer';
+import { cacheMap } from '../../loader';
+import AssetRenderer from '../AssetRenderer';
 
 export default function ViewAssetCache() {
     return (

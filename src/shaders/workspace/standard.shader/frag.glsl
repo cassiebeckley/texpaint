@@ -9,6 +9,9 @@ varying highp vec3 vVertexNormal;
 varying highp vec3 vWorldPosition;
 
 uniform sampler2D uAlbedo;
+uniform sampler2D uMetallic;
+uniform sampler2D uRoughness;
+
 uniform highp samplerCube uIrradiance; // TODO: replace irradiance map with spherical harmonics
 uniform highp sampler2D uBrdfLUT;
 uniform highp samplerCube uPrefilterMapLevel0; // TODO: see if this can be replaced with spherical harmonics
@@ -17,8 +20,8 @@ uniform highp samplerCube uPrefilterMapLevel2;
 uniform highp samplerCube uPrefilterMapLevel3;
 uniform highp samplerCube uPrefilterMapLevel4;
 
-float metallic = 0.0;
-float roughness = 0.5;
+uniform mat4 uBackgroundMatrix;
+
 float ao = 1.0;
 
 #define PI 3.1415926538
@@ -90,6 +93,8 @@ vec3 getPrefiltered(vec3 R, float roughness) {
     const float MAX_REFLECTION_LOD = 4.0;
     int level = int(floor(roughness * MAX_REFLECTION_LOD + 0.5));
 
+    // TODO: try doing a linear filter between levels for gradient falloff of roughness
+
     if (level == 0) return textureCube(uPrefilterMapLevel0, R).rgb;
     if (level == 1) return textureCube(uPrefilterMapLevel1, R).rgb;
     if (level == 2) return textureCube(uPrefilterMapLevel2, R).rgb;
@@ -105,10 +110,12 @@ void main() {
     highp vec3 V = normalize(uCameraPosition - vWorldPosition);
     highp vec3 R = reflect(-V, N);
 
-    highp vec3 irradiance = textureCubeSample(uIrradiance, N).rgb;
-    // highp vec3 prefilteredColor = textureCubeLodEXT(uPrefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-    highp vec3 prefilteredColor = getPrefiltered(R, roughness);
     vec3 albedo = texture2D(uAlbedo, coord).rgb;
+    float roughness = texture2D(uRoughness, coord).x;
+    float metallic = texture2D(uMetallic, coord).x;
+
+    highp vec3 irradiance = textureCubeSample(uIrradiance, (uBackgroundMatrix * vec4(N, 1.0)).xyz).rgb;
+    highp vec3 prefilteredColor = getPrefiltered((uBackgroundMatrix * vec4(R, 1.0)).xyz, roughness);
 
     vec3 F0 = vec3(0.04); // TODO: probably calculate this from the IOR
     F0 = mix(F0, albedo, metallic);

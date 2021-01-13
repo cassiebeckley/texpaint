@@ -2,6 +2,7 @@ import * as React from 'react';
 import Widget from './Widget';
 
 import Image from '../loader/image';
+import ImageWidget from '../widgets/imageWidget';
 
 export default function ImageRenderer({
     image,
@@ -25,7 +26,7 @@ export default function ImageRenderer({
     }
     return (
         <Widget
-            type="ImageWidget"
+            constructor={ImageWidget}
             widgetProps={{ image }}
             style={{ display: 'inline-block', width, height }}
         ></Widget>

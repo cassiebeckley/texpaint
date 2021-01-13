@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ColorSelect from './widgets/colorSelect';
-import ColorWheel from './components/ColorWheel';
+import BrushMaterial from './components/BrushMaterial';
 import { WindowContext } from './components/Widget';
 import WindowManager from './windowManager';
 import TextureDisplay from './widgets/textureDisplay';
@@ -14,10 +14,11 @@ import Widget from './widget';
 import { loadAssetFromBlob } from './loader';
 import { AssetType } from './loader/asset';
 import ImageWidget from './widgets/imageWidget';
-import ViewAssetCache from './components/ViewAssetCache';
+import ViewAssetCache from './components/debug/ViewAssetCache';
+import ViewShaderCache from './components/debug/ViewShaderCache';
+import Modal from './components/Modal';
 
 const Renderer = ({
-    widgets,
     children,
 }: {
     widgets: (new () => Widget)[];
@@ -29,7 +30,7 @@ const Renderer = ({
 
     useEffect(() => {
         if (windowManager === null) {
-            setWindowManager(new WindowManager(canvas.current, widgets));
+            setWindowManager(new WindowManager(canvas.current));
         } else {
             windowManager.draw();
         }
@@ -63,40 +64,6 @@ const Renderer = ({
     );
 };
 
-const BrushColor = () => {
-    const windowManager = useContext(WindowContext);
-
-    const [brushColor, setBrushColor] = useState(vec3.create());
-    const [showColorSelector, setShowColorSelector] = useState(false);
-
-    const color = vec3.create();
-    vec3.mul(color, brushColor, [255, 255, 255]);
-    vec3.round(color, color);
-
-    return (
-        <div
-            className="color-select"
-            style={{ backgroundColor: showColorSelector && '#7f7f7f' }}
-        >
-            <button
-                className="brush-color"
-                style={{ backgroundColor: `rgb(${color})` }}
-                onClick={() => setShowColorSelector(!showColorSelector)}
-            />
-
-            {showColorSelector && (
-                <ColorWheel
-                    brushColor={brushColor}
-                    setBrushColor={(c: vec3) => {
-                        setBrushColor(c);
-                        windowManager.slate.color = c;
-                    }}
-                />
-            )}
-        </div>
-    );
-};
-
 const TopBar = ({ on2d, on3d }) => {
     const windowManager = useContext(WindowContext);
 
@@ -112,7 +79,7 @@ const TopBar = ({ on2d, on3d }) => {
                 const asset = await loadAssetFromBlob(file.name, file);
                 switch (asset.type) {
                     case AssetType.Image:
-                        windowManager.slate.load(asset.image);
+                        windowManager.slate.loadAlbedo(asset.image);
                         break;
                     case AssetType.Mesh:
                         const mesh = asset.meshes[0];
@@ -130,15 +97,24 @@ const TopBar = ({ on2d, on3d }) => {
             <button onClick={on3d}>3D Object</button>
             <button onClick={handleOpen}>Open</button>
             <div style={{ flexGrow: 1, textAlign: 'right' }}>
-                <BrushColor />
+                <BrushMaterial />
             </div>
         </div>
     );
 };
 
+// TODO: switch to using CSS (maybe modules)
+
 const App = () => {
     const [showTexture, setShowTexture] = useState(false);
     const [showMesh, setShowMesh] = useState(true);
+    const [showShaders, setShowShaders] = useState(false);
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === '`' && e.ctrlKey) {
+            setShowShaders(!showShaders);
+        }
+    });
 
     return (
         <div
@@ -165,6 +141,14 @@ const App = () => {
                 >
                     {showTexture && <TexturePaint />}
                     {showMesh && <MeshPaint />}
+                    {showShaders && (
+                        <Modal
+                            style={{ width: '1000px' }}
+                            onClose={() => setShowShaders(false)}
+                        >
+                            <ViewShaderCache />
+                        </Modal>
+                    )}
                 </div>
             </Renderer>
         </div>
@@ -176,5 +160,7 @@ window.addEventListener('load', () => {
 });
 
 window.addEventListener('error', (e) => {
+    // TODO: better error handling
+    // at least make it compatible with React :P
     document.body.innerHTML = `<div style="background-color: white; font-size: 20px;">ERROR: <pre>${e.error}</pre></div>`;
 });

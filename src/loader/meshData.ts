@@ -23,18 +23,27 @@ export default class MeshData {
         this.triangles = triangles;
     }
 
-    raycast(outputIntersection: vec3, origin: vec3, direction: vec3) {
+    raycast(
+        outputIntersection: vec3,
+        outputNormal: vec3,
+        origin: vec3,
+        direction: vec3
+    ) {
         // TODO: use a BVH to speed this up
         let closest = Infinity;
         let closestPoint = vec3.create();
+        const closestUV = vec2.create();
+        let closestTriangle: Triangle = null;
 
         const currentPoint = vec3.create();
+        const currentUV = vec2.create();
 
         for (let i = 0; i < this.triangles.length; i++) {
             const triangle = this.triangles[i];
 
             const intersection = rayTriangleIntersection(
                 currentPoint,
+                currentUV,
                 origin,
                 direction,
                 this.vertices[triangle[0]],
@@ -44,11 +53,42 @@ export default class MeshData {
             if (intersection > 0 && intersection < closest) {
                 closest = intersection;
                 vec3.copy(closestPoint, currentPoint);
+                vec2.copy(closestUV, currentUV);
+                closestTriangle = triangle;
             }
         }
 
         if (isFinite(closest)) {
+            const [u, v] = closestUV;
             vec3.copy(outputIntersection, closestPoint);
+
+            vec3.zero(outputNormal);
+
+            const normalContribution = vec3.create();
+
+            vec3.scale(
+                normalContribution,
+                this.vertexNormals[closestTriangle[0]],
+                u
+            );
+            vec3.add(outputNormal, outputNormal, normalContribution);
+
+            vec3.scale(
+                normalContribution,
+                this.vertexNormals[closestTriangle[1]],
+                v
+            );
+            vec3.add(outputNormal, outputNormal, normalContribution);
+
+            vec3.scale(
+                normalContribution,
+                this.vertexNormals[closestTriangle[2]],
+                1 - u - v
+            );
+            vec3.add(outputNormal, outputNormal, normalContribution);
+
+            vec3.normalize(outputNormal, outputNormal);
+
             return true;
         }
 
@@ -58,6 +98,7 @@ export default class MeshData {
 
 const rayTriangleIntersection = (
     point: vec3,
+    uv: vec2,
     origin: vec3,
     direction: vec3,
     v0: vec3,
@@ -101,6 +142,8 @@ const rayTriangleIntersection = (
     vec3.zero(point);
     vec3.scale(point, direction, t);
     vec3.add(point, point, origin);
+
+    vec2.set(uv, u, v);
 
     return t;
 };

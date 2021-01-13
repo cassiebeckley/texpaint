@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createContext, useContext, useEffect, useRef } from 'react';
-import { vec3 } from 'gl-matrix';
+import { vec2, vec3 } from 'gl-matrix';
 import WindowManager from '../windowManager';
 
 const MOUSE_EVENTS = [
@@ -37,22 +37,27 @@ const POINTER_EVENTS = [
     'onPointerOut',
 ];
 
-export default function Widget({ type, widgetProps, ...props }) {
+export default function Widget({
+    constructor,
+    widgetProps,
+    zindex = 0,
+    ...props
+}) {
     const windowManager = useContext(WindowContext);
     const div = useRef(null);
 
     useEffect(() => {
         const bounds = div.current.getBoundingClientRect();
-        const position = vec3.create();
-        vec3.set(position, bounds.x, bounds.y, 0);
+        const position = vec2.create();
+        vec2.set(position, bounds.x - 1, bounds.y);
 
         const drawId = windowManager.addToDrawList(
-            type,
+            constructor,
             position,
             bounds.width,
             bounds.height,
             widgetProps,
-            props.zindex || 0
+            zindex
         );
 
         return () => {

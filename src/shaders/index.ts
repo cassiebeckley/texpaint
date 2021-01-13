@@ -7,6 +7,7 @@ interface Uniforms {
 }
 
 export interface Shader {
+    source: ShaderSource;
     program: WebGLShader;
     attributes: Attributes;
     uniforms: Uniforms;
@@ -15,7 +16,8 @@ export interface Shader {
 const loadShader = (
     gl: WebGLRenderingContext,
     type: number,
-    source: string
+    source: string,
+    shaderName: string
 ): WebGLShader => {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -23,7 +25,7 @@ const loadShader = (
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         const info = gl.getShaderInfoLog(shader);
         gl.deleteShader(shader);
-        throw new Error(`An error occurred compiling the shaders: ${info}`);
+        throw new Error(`An error occurred compiling ${shaderName}: ${info}`);
     }
 
     return shader;
@@ -31,11 +33,20 @@ const loadShader = (
 
 const loadShaderProgram = (
     gl: WebGLRenderingContext,
-    vsSource: string,
-    fsSource: string
+    source: ShaderSource
 ): Shader => {
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+    const vertexShader = loadShader(
+        gl,
+        gl.VERTEX_SHADER,
+        source.vertex,
+        source.name
+    );
+    const fragmentShader = loadShader(
+        gl,
+        gl.FRAGMENT_SHADER,
+        source.fragment,
+        source.name
+    );
 
     const shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShader);
@@ -71,10 +82,45 @@ const loadShaderProgram = (
     }
 
     return {
+        source,
         program: shaderProgram,
         attributes,
         uniforms,
     };
 };
 
-export default loadShaderProgram;
+const cache: WeakMap<
+    WebGLRenderingContext,
+    Map<string, Shader>
+> = new WeakMap();
+
+export default class ShaderSource {
+    name: string;
+    vertex: string;
+    fragment: string;
+    constructor(name: string, vertexSource: string, fragmentSource: string) {
+        this.name = name;
+        this.vertex = vertexSource;
+        this.fragment = fragmentSource;
+    }
+
+    load(gl: WebGLRenderingContext) {
+        if (!cache.has(gl)) {
+            cache.set(gl, new Map());
+        }
+
+        const glCache = cache.get(gl);
+
+        if (glCache.has(this.name)) {
+            return glCache.get(this.name);
+        }
+
+        const shader = loadShaderProgram(gl, this);
+        glCache.set(this.name, shader);
+        return shader;
+    }
+}
+
+export function getCache(gl: WebGLRenderingContext) {
+    return cache.get(gl);
+}

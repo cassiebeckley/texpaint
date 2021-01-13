@@ -1,9 +1,9 @@
-import { mat4, vec3 } from 'gl-matrix';
+import { mat4, vec2, vec3 } from 'gl-matrix';
 import * as React from 'react';
 import { useContext, useRef, useState } from 'react';
 import { SCROLL_SCALE } from '../constants';
 import { normalizeWheelEvent } from '../utils';
-import { getModelViewMatrix } from '../widgets/textureDisplay';
+import TextureDisplay, { getModelMatrix } from '../widgets/textureDisplay';
 import Widget, { WindowContext } from './Widget';
 
 const BINARY_LEFT_MOUSE_BUTTON = 0b1;
@@ -13,77 +13,95 @@ const BINARY_RIGHT_MOUSE_BUTTON = 0b100;
 export default function TexturePaint() {
     const windowManager = useContext(WindowContext);
 
-    const [scale, setScale] = useState(1);
-    const [position, setPosition] = useState(vec3.create());
-    const [pan, setPan] = useState(false);
-    const [lastPanPosition, setLastPanPosition] = useState(vec3.create());
+    const [view, setView] = useState(() => {
+        const viewMatrix = mat4.create();
+        mat4.identity(viewMatrix);
+        return viewMatrix;
+    });
 
-    const [cursorPosition, setCursorPosition] = useState(vec3.create());
+    const [pan, setPan] = useState(false);
+    const [lastPanPosition, setLastPanPosition] = useState(vec2.create());
+
+    const [cursorPosition, setCursorPosition] = useState(vec2.create());
     const [pressure, setPressure] = useState(1.0);
 
     const [uv, setUV] = useState(false);
 
     const div = useRef(null);
 
-    const uiToImageCoordinates = (uiCoord: vec3) => {
-        const widgetBounds = div.current.getBoundingClientRect();
-
-        const modelViewMatrix = getModelViewMatrix(
+    const uiToImageCoordinates = (uiCoord: vec2) => {
+        const modelMatrix = getModelMatrix(
             windowManager.slate.width,
-            windowManager.slate.height,
-            widgetBounds.width,
-            widgetBounds.height,
-            scale,
-            position
+            windowManager.slate.height
         );
+
+        const modelViewMatrix = mat4.create();
+        mat4.mul(modelViewMatrix, view, modelMatrix);
+
         const invModelViewMatrix = mat4.create();
         mat4.invert(invModelViewMatrix, modelViewMatrix);
 
-        const imageCoord = vec3.create();
-        vec3.transformMat4(imageCoord, uiCoord, invModelViewMatrix);
-        vec3.mul(imageCoord, imageCoord, [
+        const imageCoord = vec2.create();
+        vec2.transformMat4(imageCoord, uiCoord, invModelViewMatrix);
+        vec2.mul(imageCoord, imageCoord, [
             windowManager.slate.width,
             windowManager.slate.height,
-            1,
         ]);
 
         return imageCoord;
     };
 
     const handleWheel = (e: WheelEvent) => {
+        if (e.deltaY === 0) {
+            return;
+        }
+
         let deltaY = normalizeWheelEvent(e);
 
+        let scale = 1;
+
         if (deltaY < 0) {
-            setScale(scale / (-deltaY * SCROLL_SCALE));
+            scale = 1 / (-deltaY * SCROLL_SCALE);
         } else {
-            setScale(scale * (deltaY * SCROLL_SCALE));
+            scale = deltaY * SCROLL_SCALE;
         }
+
+        const imageCoords = uiToImageCoordinates(cursorPosition);
+
+        let scaled = mat4.create();
+        mat4.translate(scaled, view, [imageCoords[0], imageCoords[1], 0]);
+        mat4.scale(scaled, scaled, [scale, scale, scale]);
+        mat4.translate(scaled, scaled, [-imageCoords[0], -imageCoords[1], 0]);
+
+        setView(scaled);
     };
 
-    const handlePanStart = (panPosition: vec3) => {
+    const handlePanStart = (panPosition: vec2) => {
         setPan(true);
-        setLastPanPosition(vec3.clone(panPosition));
+        setLastPanPosition(vec2.clone(panPosition));
     };
 
     const handlePanStop = () => {
         setPan(false);
     };
 
-    const handlePanMove = (panPosition: vec3) => {
+    const handlePanMove = (panPosition: vec2) => {
         let deltaMouse = uiToImageCoordinates(panPosition);
         let lastImageMousePos = uiToImageCoordinates(lastPanPosition);
-        vec3.sub(deltaMouse, deltaMouse, lastImageMousePos);
-        vec3.add(deltaMouse, deltaMouse, position);
-        setPosition(deltaMouse);
+        vec2.sub(deltaMouse, deltaMouse, lastImageMousePos);
 
-        setLastPanPosition(vec3.clone(panPosition));
+        const panned = mat4.create();
+        mat4.translate(panned, view, [deltaMouse[0], deltaMouse[1], 0]);
+
+        setView(panned);
+        setLastPanPosition(vec2.clone(panPosition));
     };
 
     const handlePointerDown = (e: React.PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const coords = vec3.create();
-        vec3.set(coords, e.clientX, e.clientY, 0);
+        const coords = vec2.create();
+        vec2.set(coords, e.clientX, e.clientY);
 
         if (e.button === 1 || (e.button === 0 && e.altKey)) {
             handlePanStart(coords);
@@ -95,8 +113,8 @@ export default function TexturePaint() {
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
-        const coords = vec3.create();
-        vec3.set(coords, e.clientX, e.clientY, 0);
+        const coords = vec2.create();
+        vec2.set(coords, e.clientX, e.clientY);
 
         if (pan) {
             handlePanStop();
@@ -110,8 +128,8 @@ export default function TexturePaint() {
     const handlePointerMove = (e: React.PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const coords = vec3.create();
-        vec3.set(coords, e.clientX, e.clientY, 0);
+        const coords = vec2.create();
+        vec2.set(coords, e.clientX, e.clientY);
 
         setCursorPosition(coords);
 
@@ -126,16 +144,20 @@ export default function TexturePaint() {
 
     const handlePointerLeave = (e: React.PointerEvent) => {
         handlePanStop();
-        const p = vec3.create();
-        vec3.set(p, -100, -100, 0);
+        const p = vec2.create();
+        vec2.set(p, -100, -100);
         setCursorPosition(p);
     };
+
+    const scaling = vec3.create();
+    mat4.getScaling(scaling, view);
+    const scale = scaling[0];
 
     return (
         <div style={{ flexGrow: 1 }} ref={div}>
             <Widget
-                type="TextureDisplay"
-                widgetProps={{ scale, position, drawUVMap: uv }}
+                constructor={TextureDisplay}
+                widgetProps={{ view, drawUVMap: uv }}
                 style={{
                     height: '100%',
                     position: 'relative',

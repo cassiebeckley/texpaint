@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { vec2, vec3 } from 'gl-matrix';
 import { hsvToRgb, rgbToHsv } from '../color';
 import Widget from './Widget';
+import ColorSelect from '../widgets/colorSelect';
 
 enum ColorResultType {
     None,
@@ -115,6 +116,8 @@ export default function ColorWheel({ brushColor, setBrushColor }) {
     const hueHeight = 6;
 
     const handleMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
+
         const result = hsvColorAt(
             [e.clientX, e.clientY],
             { width: widgetWidth, radius, wheelWidth },
@@ -149,13 +152,13 @@ export default function ColorWheel({ brushColor, setBrushColor }) {
 
     return (
         <Widget
-            type="ColorSelect"
+            constructor={ColorSelect}
             widgetProps={{ hsvColor, radius, wheelWidth }}
-            className="color-widget"
             style={{ height: widgetWidth, width: widgetWidth, zIndex: 1 }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            zindex={1}
         >
             <div
                 style={{

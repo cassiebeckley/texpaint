@@ -6,7 +6,7 @@
         "start": "parcel serve src/index.html",
         "build": "parcel build src/index.html --dist-dir docs --public-url /texpaint/",
         "format": "prettier --write src",
-        "check": "tsc --noEmit -p tsccheck.json",
+        "check": "tsc --noEmit",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [],

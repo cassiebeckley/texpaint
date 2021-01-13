@@ -46,7 +46,7 @@ const loadImageDOM = (url: string): Promise<Image> =>
                 const image: Image = {
                     width: imageData.width,
                     height: imageData.height,
-                    format: ImageFormat.RGB,
+                    format: ImageFormat.RGBA,
                     storage: {
                         type: ImageStorage.Uint8,
                         pixels: imageData.data.map(
@@ -109,6 +109,8 @@ export async function loadAssetFromBlob(
         const data = await blob.arrayBuffer();
         return loaders[extension](data);
     }
+
+    console.log('no registered loaders, trying to load as <img>');
 
     const url = URL.createObjectURL(blob);
     try {

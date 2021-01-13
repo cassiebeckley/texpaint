@@ -1,7 +1,7 @@
-import vertCompositeShader from 'url:./shaders/compositeShader/vert.glsl';
-import fragCompositeShader from 'url:./shaders/compositeShader/frag.glsl';
-import { generateRectVerticesStrip, rectVerticesStripUV } from './primitives';
-import loadShaderProgram, { Shader } from './shaders';
+import vertCompositeShader from 'url:./shaders/composite.shader/vert.glsl';
+import fragCompositeShader from 'url:./shaders/composite.shader/frag.glsl';
+import { getUnitRectPositionBuffer, getUnitRectUVBuffer } from './primitives';
+import ShaderSource, { Shader } from './shaders';
 import WindowManager from './windowManager';
 import { mat4 } from 'gl-matrix';
 
@@ -22,17 +22,13 @@ export function O(input: Operand) {
 }
 
 class OperationBuilder {
-    private input: WebGLTexture;
-    private operations: Operation[];
+    input: WebGLTexture;
+    operations: Operation[];
 
     constructor(input: WebGLTexture) {
         this.input = input;
 
         this.operations = [];
-    }
-
-    run(compositor: Compositor, output: WebGLTexture) {
-        compositor.run(output, this.input, this.operations);
     }
 
     mix(operand: Operand) {
@@ -54,9 +50,7 @@ export default class Compositor {
 
     private framebuffer: WebGLFramebuffer;
 
-    private compositePositionBuffer: WebGLBuffer;
     private compositeShader: Shader;
-    private compositeUVBuffer: WebGLBuffer;
 
     constructor(wm: WindowManager, width: number, height: number) {
         this.windowManager = wm;
@@ -70,31 +64,20 @@ export default class Compositor {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        this.compositePositionBuffer = gl.createBuffer();
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.compositePositionBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(generateRectVerticesStrip(0, 0, 1, 1)),
-            gl.STATIC_DRAW
-        );
-
-        this.compositeShader = loadShaderProgram(
-            gl,
+        const compositeSource = new ShaderSource(
+            'composite',
             vertCompositeShader,
             fragCompositeShader
         );
-
-        this.compositeUVBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.compositeUVBuffer);
-        gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array(rectVerticesStripUV),
-            gl.STATIC_DRAW
-        );
+        this.compositeShader = compositeSource.load(gl);
     }
 
-    run(output: WebGLTexture, input: WebGLTexture, operations: Operation[]) {
+    setDimensions(width: number, height: number) {
+        this.width = width;
+        this.height = height;
+    }
+
+    run(output: WebGLTexture, builder: OperationBuilder) {
         const gl = this.gl;
 
         let tempTextures = [];
@@ -104,7 +87,8 @@ export default class Compositor {
             return t;
         };
 
-        let composited = input;
+        const operations = builder.operations;
+        let composited = builder.input;
 
         for (let i = 0; i < operations.length; i++) {
             const op = operations[i];
@@ -113,7 +97,7 @@ export default class Compositor {
             if (op.operand instanceof OperationBuilder) {
                 operand = createLayerTexture(gl, this.width, this.height);
 
-                op.operand.run(this, operand);
+                this.run(operand, op.operand);
             } else {
                 operand = op.operand;
             }
@@ -189,7 +173,7 @@ export default class Compositor {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.compositePositionBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, getUnitRectPositionBuffer(gl));
             gl.vertexAttribPointer(
                 this.compositeShader.attributes.aVertexPosition,
                 size,
@@ -209,7 +193,7 @@ export default class Compositor {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.compositeUVBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, getUnitRectUVBuffer(gl));
             gl.vertexAttribPointer(
                 this.compositeShader.attributes.aTextureCoord,
                 size,

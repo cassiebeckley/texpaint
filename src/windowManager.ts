@@ -1,4 +1,4 @@
-import { mat4, vec3 } from 'gl-matrix';
+import { mat4, vec2, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
 import Image, { ImageFormat, ImageStorage } from './loader/image';
 import MeshData from './loader/meshData';
@@ -13,17 +13,18 @@ vec3.set(brushColor, 0, 0, 0);
 export default class WindowManager {
     canvas: HTMLCanvasElement;
     gl: WebGLRenderingContext;
-    widgets: { [name: string]: Widget };
+    widgets: WeakMap<{ new (): Widget }, Widget>;
     uiProjectionMatrix: mat4;
 
     drawId: number;
     drawList: {
         widget: Widget;
-        position: vec3;
+        position: vec2;
         width: number;
         height: number;
         widgetProps: any;
         id: number;
+        zIndex: number;
     }[];
 
     frameRequest: number;
@@ -33,10 +34,7 @@ export default class WindowManager {
     brushEngine: BrushEngine; // and this as well
     viewport: number[];
 
-    constructor(
-        canvas: HTMLCanvasElement,
-        widgets: { new (): Widget; name: string }[]
-    ) {
+    constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.gl = canvas.getContext('webgl', { alpha: true });
         this.uiProjectionMatrix = mat4.create();
@@ -53,20 +51,20 @@ export default class WindowManager {
 
         this.viewportToWindow();
 
-        this.widgets = {};
+        this.widgets = new WeakMap();
 
-        for (let i = 0; i < widgets.length; i++) {
-            const WidgetConstructor = widgets[i];
-            const widget = new WidgetConstructor();
+        // for (let i = 0; i < widgets.length; i++) {
+        //     const WidgetConstructor = widgets[i];
+        //     const widget = new WidgetConstructor();
 
-            widget.initGL(this.gl).then((redraw) => {
-                if (redraw) {
-                    this.drawOnNextFrame();
-                }
-            });
+        //     widget.initGL(this.gl).then((redraw) => {
+        //         if (redraw) {
+        //             this.drawOnNextFrame();
+        //         }
+        //     });
 
-            this.widgets[WidgetConstructor.name] = widget;
-        }
+        //     this.widgets.set(WidgetConstructor, widget);
+        // }
 
         const handleResize = () => {
             this.drawOnNextFrame();
@@ -167,26 +165,38 @@ export default class WindowManager {
     }
 
     addToDrawList(
-        widget: string,
-        position: vec3,
+        WidgetConstructor: { new (): Widget },
+        position: vec2,
         width: number,
         height: number,
         widgetProps: any,
         zIndex: number
     ) {
-        position[2] = zIndex;
-
         const id = this.drawId++;
+
+        if (!this.widgets.has(WidgetConstructor)) {
+            const widget = new WidgetConstructor();
+
+            widget.initGL(this.gl).then((redraw) => {
+                if (redraw) {
+                    this.drawOnNextFrame();
+                }
+            });
+
+            this.widgets.set(WidgetConstructor, widget);
+        }
+
         this.drawList.push({
-            widget: this.widgets[widget],
+            widget: this.widgets.get(WidgetConstructor),
             position,
             width,
             height,
             widgetProps,
             id,
+            zIndex,
         });
 
-        this.drawList.sort((a, b) => a.position[2] - b.position[2]); // TODO: replace this with depth test
+        this.drawList.sort((a, b) => a.zIndex - b.zIndex);
 
         this.drawOnNextFrame();
 
