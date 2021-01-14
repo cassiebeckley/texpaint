@@ -1,18 +1,16 @@
 import { vec3 } from 'gl-matrix';
 import * as React from 'react';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import ColorSelect from './widgets/colorSelect';
-import BrushMaterial from './components/BrushMaterial';
 import { WindowContext } from './components/Widget';
 import WindowManager from './windowManager';
 import TextureDisplay from './widgets/textureDisplay';
+import MenuBar from './components/menu/MenuBar';
 import TexturePaint from './components/TexturePaint';
 import MeshPaint from './components/MeshPaint';
 import MeshDisplay from './widgets/meshDisplay';
 import Widget from './widget';
-import { loadAssetFromBlob } from './loader';
-import { AssetType } from './loader/asset';
 import ImageWidget from './widgets/imageWidget';
 import ViewAssetCache from './components/debug/ViewAssetCache';
 import ViewShaderCache from './components/debug/ViewShaderCache';
@@ -64,45 +62,6 @@ const Renderer = ({
     );
 };
 
-const TopBar = ({ on2d, on3d }) => {
-    const windowManager = useContext(WindowContext);
-
-    const handleOpen = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.click();
-
-        input.addEventListener('change', function () {
-            const file = this.files[0];
-
-            (async () => {
-                const asset = await loadAssetFromBlob(file.name, file);
-                switch (asset.type) {
-                    case AssetType.Image:
-                        windowManager.slate.loadAlbedo(asset.image);
-                        break;
-                    case AssetType.Mesh:
-                        const mesh = asset.meshes[0];
-                        windowManager.setMesh(mesh);
-                        break;
-                }
-                windowManager.drawOnNextFrame();
-            })();
-        });
-    };
-
-    return (
-        <div className="top-bar">
-            <button onClick={on2d}>2D</button>
-            <button onClick={on3d}>3D</button>
-            <button onClick={handleOpen}>Open</button>
-            <div style={{ flexGrow: 1, textAlign: 'right' }}>
-                <BrushMaterial />
-            </div>
-        </div>
-    );
-};
-
 // TODO: switch to using CSS (maybe modules)
 
 const App = () => {
@@ -117,9 +76,7 @@ const App = () => {
     });
 
     return (
-        <div
-            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-        >
+        <div style={{ display: 'flex', height: '100%' }}>
             <Renderer
                 widgets={[
                     ColorSelect,
@@ -128,10 +85,6 @@ const App = () => {
                     ImageWidget,
                 ]}
             >
-                <TopBar
-                    on2d={() => setShowTexture(!showTexture)}
-                    on3d={() => setShowMesh(!showMesh)}
-                />
                 <div
                     style={{
                         flexGrow: 1,
@@ -150,6 +103,10 @@ const App = () => {
                         </Modal>
                     )}
                 </div>
+                <MenuBar
+                    on2d={() => setShowTexture(!showTexture)}
+                    on3d={() => setShowMesh(!showMesh)}
+                />
             </Renderer>
         </div>
     );

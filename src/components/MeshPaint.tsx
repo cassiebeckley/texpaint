@@ -102,22 +102,22 @@ export default function MeshPaint({}) {
     const handleRotateBackgroundStart = (x: number) => {
         setRotatingBackground(true);
         setLastBackgroundOffset(x);
-    }
+    };
 
     const handleRotateBackgroundStop = () => {
         setRotatingBackground(false);
-    }
+    };
 
     const handleRotateBackgroundMove = (x: number) => {
         const deltaAngle = (lastBackgroundOffset - x) * -ROTATE_SENSITIVITY;
-        
+
         setBackgroundOffset(backgroundOffset + deltaAngle);
         setLastBackgroundOffset(x);
 
         if (!preventContext) {
             setPreventContext(true);
         }
-    }
+    };
 
     const handlePanStart = (panPosition: vec3) => {
         setPan(true);
@@ -292,9 +292,29 @@ export default function MeshPaint({}) {
                 onPointerLeave={handlePointerLeave}
                 onContextMenu={handleContextMenu}
             >
-                <div style={{position: 'absolute', right: '20px', bottom: '20px', top: '20px', width: '150px'}}>
-                    <BackgroundSettings rotation={rotationMatrix} backgroundOffset={backgroundOffset} />
-                    <div style={{position: 'absolute', bottom: '0px', width: '100%', height: '150px', backgroundColor: 'red'}}></div>
+                <div
+                    style={{
+                        position: 'absolute',
+                        right: '20px',
+                        bottom: '20px',
+                        top: '20px',
+                        width: '150px',
+                    }}
+                >
+                    <BackgroundSettings
+                        rotation={rotationMatrix}
+                        backgroundOffset={backgroundOffset}
+                        setBackgroundOffset={setBackgroundOffset}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '0px',
+                            width: '100%',
+                            height: '150px',
+                            backgroundColor: 'red',
+                        }}
+                    ></div>
                 </div>
             </Widget>
         </div>

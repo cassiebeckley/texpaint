@@ -12,3 +12,6 @@ export const FAR = 100.0;
 export const HALF_COLOR = '#7f7f7f';
 export const BACKGROUND_DARK = '#222222';
 export const BACKGROUND_LIGHT = '#383838';
+
+// brush defaults; will be replaced by customizable brush library probably
+export const DEFAULT_BRUSH_SPACING = 0.2;

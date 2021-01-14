@@ -108,9 +108,7 @@ export default function Widget({
         }
     }
 
-    return (
-        <div {...props} ref={div} className={`widget ${className}`}></div>
-    );
+    return <div {...props} ref={div} className={`widget ${className}`}></div>;
 }
 
 export const WindowContext: React.Context<WindowManager> = createContext(null);

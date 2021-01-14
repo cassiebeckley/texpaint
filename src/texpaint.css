@@ -1,10 +1,19 @@
+html {
+    box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
 body {
     position: absolute;
     margin: 0;
     border: 0;
     touch-action: none;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
 
     background-color: #383838;
 
@@ -18,32 +27,64 @@ body {
     overflow: hidden;
 }
 
-.top-bar {
+.menu-bar {
+    /* TODO: on mobile, show at top in portrait mode and at side in landscape */
+    box-sizing: border-box;
     background-color: #222222;
-    height: 60px;
-    padding: 0 40px;
+    height: 100%;
+    padding: 40px 10px;
+    width: 60px;
     display: flex;
+    flex-direction: column;
     z-index: 10;
 }
 
-.top-bar button {
-    display: block;
-    height: 40px;
-    margin: 10px;
-    margin-left: 0;
-    padding: 0 20px;
+.menu-bar div.spacer {
+    flex-grow: 1;
 }
 
-.color-select {
+.menu-bar button {
+    width: 40px;
+    margin-top: 10px;
+    padding: 10px 0;
+}
+
+.tab-panel {
+    box-sizing: border-box;
     position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 100%;
-
-    border-radius: 10px 10px 0 0;
+    border-radius: 0 10px 10px 0;
+    margin-left: -10px;
+    margin-top: -10px;
+    margin-right: -10px;
+    padding-left: 10px;
+    padding: 10px;
 }
 
-.color-select input {
+.tab-panel button {
+    margin: 0;
+}
+
+.tab-panel .panel {
+    position: absolute;
+    display: block;
+    right: 60px;
+    top: 0;
+
+    width: 350px;
+
+    /* TODO: shared UI constants */
+    border-radius: 10px 0 10px 10px;
+    overflow: hidden;
+}
+
+.tab-panel .border-top {
+    height: 10px;
+    background-color: #7f7f7f;
+    width: 100%;
+}
+
+.tab-panel input[type='range'] {
+    display: block;
     width: 100%;
 }
 
@@ -51,7 +92,6 @@ button.brush-color {
     display: block;
     position: relative;
     margin: 0 auto;
-    margin-top: 10px;
     width: 40px;
     height: 40px;
     border: 2px solid #7f7f7f;

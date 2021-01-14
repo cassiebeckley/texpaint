@@ -1,12 +1,13 @@
 import { mat4, vec2, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
+import { DEFAULT_BRUSH_SPACING } from './constants';
 import Image, { ImageFormat, ImageStorage } from './loader/image';
 import MeshData from './loader/meshData';
 import Mesh from './mesh';
 import Slate from './slate';
 import type Widget from './widget';
 
-const brushSize = 40.0;
+const brushSize = 40.0; // TODO: brush size should be percentage of max dimension of texture/mesh; default should be a constant
 const brushColor = vec3.create();
 vec3.set(brushColor, 0, 0, 0);
 
@@ -77,7 +78,11 @@ export default class WindowManager {
 
         this.slate = new Slate(this, 1024, 1024);
         this.mesh = null;
-        this.brushEngine = new BrushEngine(brushSize, 0.4, this);
+        this.brushEngine = new BrushEngine(
+            brushSize,
+            DEFAULT_BRUSH_SPACING,
+            this
+        );
     }
 
     setViewport(x: number, y: number, width: number, height: number) {

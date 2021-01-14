@@ -121,7 +121,11 @@ export default class EnvironmentBall {
         mat4.invert(invRotation, invRotation);
         mat4.rotateY(invRotation, invRotation, Math.PI);
 
-        gl.uniformMatrix4fv(shader.uniforms.uRotationMatrix, false, invRotation);
+        gl.uniformMatrix4fv(
+            shader.uniforms.uRotationMatrix,
+            false,
+            invRotation
+        );
 
         {
             const size = 2;

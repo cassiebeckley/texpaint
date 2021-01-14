@@ -195,12 +195,34 @@ export default class Slate {
 
     set brushRoughness(roughness: number) {
         const roughnessByte = roughness * 255;
-        fillTexture(this.gl, this.brushRoughnessTexture, 1, 1, new Uint8ClampedArray([roughnessByte, roughnessByte, roughnessByte, 255]));
+        fillTexture(
+            this.gl,
+            this.brushRoughnessTexture,
+            1,
+            1,
+            new Uint8ClampedArray([
+                roughnessByte,
+                roughnessByte,
+                roughnessByte,
+                255,
+            ])
+        );
     }
 
     set brushMetallic(metallic: number) {
         const metallicByte = metallic * 255;
-        fillTexture(this.gl, this.brushMetallicTexture, 1, 1, new Uint8ClampedArray([metallicByte, metallicByte, metallicByte, 255]));
+        fillTexture(
+            this.gl,
+            this.brushMetallicTexture,
+            1,
+            1,
+            new Uint8ClampedArray([
+                metallicByte,
+                metallicByte,
+                metallicByte,
+                255,
+            ])
+        );
     }
 
     loadAlbedo(image: Image) {
@@ -246,26 +268,9 @@ export default class Slate {
 
     // Undo history
     apply() {
-        this.compositor.run(
-            this.albedo,
-            O(this.layer.albedo).mix(
-                O(this.brushAlbedo).mask(this.currentOperation)
-            )
-        );
+        this.updated = true;
 
-        this.compositor.run(
-            this.roughness,
-            O(this.layer.roughness).mix(
-                O(this.brushRoughnessTexture).mask(this.currentOperation)
-            )
-        );
-
-        this.compositor.run(
-            this.metallic,
-            O(this.layer.metallic).mix(
-                O(this.brushMetallicTexture).mask(this.currentOperation)
-            )
-        );
+        this.updateTextures();
 
         fillTexture(
             this.gl,
@@ -275,15 +280,17 @@ export default class Slate {
             new Uint8ClampedArray([0, 0, 0, 255])
         );
 
-        this.layer = new Layer(
-            this.gl,
-            this.width,
-            this.height
-        );
+        this.layer = new Layer(this.gl, this.width, this.height);
 
         this.compositor.run(this.layer.albedo, O(this.albedo).mix(this.albedo));
-        this.compositor.run(this.layer.roughness, O(this.roughness).mix(this.roughness));
-        this.compositor.run(this.layer.metallic, O(this.metallic).mix(this.metallic));
+        this.compositor.run(
+            this.layer.roughness,
+            O(this.roughness).mix(this.roughness)
+        );
+        this.compositor.run(
+            this.layer.metallic,
+            O(this.metallic).mix(this.metallic)
+        );
 
         // save image state in undo queue
 
@@ -344,6 +351,6 @@ export default class Slate {
             )
         );
 
-        // this.compositor.run(this.albedo, O(this.metallic).mix(this.metallic));
+        // this.compositor.run(this.albedo, O(this.currentOperation).mix(this.currentOperation));
     }
 }

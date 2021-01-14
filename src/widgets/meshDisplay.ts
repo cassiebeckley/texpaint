@@ -369,7 +369,15 @@ export default class MeshDisplay {
         width: number,
         height: number,
         mesh: Mesh,
-        { position, rotation, scale, brushCursor, brushNormal, brushRadius, backgroundOffset }
+        {
+            position,
+            rotation,
+            scale,
+            brushCursor,
+            brushNormal,
+            brushRadius,
+            backgroundOffset,
+        }
     ) {
         gl.enable(gl.DEPTH_TEST);
 
@@ -436,7 +444,7 @@ export default class MeshDisplay {
         gl: WebGLRenderingContext,
         rotation: quat,
         projectionMatrix: mat4,
-        backgroundOffset: number,
+        backgroundOffset: number
     ) {
         gl.disable(gl.CULL_FACE);
         gl.useProgram(this.backgroundShader.program);

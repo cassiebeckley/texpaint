@@ -10,12 +10,15 @@ import fragBrush2dShader from './shaders/brush/2d.shader/frag.glsl';
 
 import vertBrush3dShader from './shaders/brush/3d.shader/vert.glsl';
 import fragBrush3dShader from './shaders/brush/3d.shader/frag.glsl';
+import Mesh from './mesh';
 
 export default class BrushEngine {
     gl: WebGLRenderingContext;
 
     radius: number;
     spacing: number;
+    soft: boolean;
+
     slate: Slate;
 
     segmentStart: vec2;
@@ -44,6 +47,7 @@ export default class BrushEngine {
         const radius = diameter / 2;
         this.radius = radius;
         this.spacing = spacing;
+        this.soft = false;
 
         this.windowManager = windowManager;
         this.slate = windowManager.slate;
@@ -273,6 +277,8 @@ export default class BrushEngine {
             modelViewMatrix
         );
 
+        gl.uniform1i(this.brush2dShader.uniforms.uSoft, Number(this.soft));
+
         {
             const size = 2;
             const type = gl.FLOAT; // 32 bit floats
@@ -360,6 +366,7 @@ export default class BrushEngine {
 
         // TODO: cover seams properly
         // TODO: maybe solve this by adding extra geometry at seams in a pre-process step when the mesh is loaded?
+        // TODO: or maybe they can be covered by drawing geometry as lines after triangles?
 
         const gl = this.gl;
         gl.disable(gl.CULL_FACE);
@@ -411,6 +418,8 @@ export default class BrushEngine {
             this.brush3dShader.uniforms.uTextureHeight,
             this.slate.height
         );
+
+        gl.uniform1i(this.brush3dShader.uniforms.uSoft, Number(this.soft));
 
         {
             const size = 3;

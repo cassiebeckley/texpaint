@@ -1,6 +1,6 @@
 import { mat4, vec2, vec3 } from 'gl-matrix';
 import * as React from 'react';
-import { useContext, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { SCROLL_SCALE } from '../constants';
 import { normalizeWheelEvent } from '../utils';
 import TextureDisplay, { getModelMatrix } from '../widgets/textureDisplay';
@@ -16,6 +16,8 @@ export default function TexturePaint() {
     const [view, setView] = useState(() => {
         const viewMatrix = mat4.create();
         mat4.identity(viewMatrix);
+        // start offscreen before div bounds can be calculated
+        mat4.translate(viewMatrix, viewMatrix, [-10000, -10000, 0]);
         return viewMatrix;
     });
 
@@ -28,6 +30,20 @@ export default function TexturePaint() {
     const [uv, setUV] = useState(false);
 
     const div = useRef(null);
+
+    useEffect(() => {
+        const bounds = div.current.getBoundingClientRect();
+
+        const adjusted = mat4.create();
+        mat4.identity(adjusted);
+        mat4.translate(adjusted, adjusted, [
+            bounds.width / 2 - windowManager.slate.width / 2,
+            bounds.height / 2 - windowManager.slate.height / 2,
+            0,
+        ]);
+
+        setView(adjusted);
+    }, []);
 
     const uiToImageCoordinates = (uiCoord: vec2) => {
         const modelMatrix = getModelMatrix(
