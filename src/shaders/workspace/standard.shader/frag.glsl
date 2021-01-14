@@ -91,15 +91,29 @@ highp vec3 textureCubeSample(samplerCube cubemap, highp vec3 dir) {
 
 vec3 getPrefiltered(vec3 R, float roughness) {
     const float MAX_REFLECTION_LOD = 4.0;
-    int level = int(floor(roughness * MAX_REFLECTION_LOD + 0.5));
+    float level = roughness * MAX_REFLECTION_LOD;
+    float t = fract(level);
 
     // TODO: try doing a linear filter between levels for gradient falloff of roughness
 
-    if (level == 0) return textureCube(uPrefilterMapLevel0, R).rgb;
-    if (level == 1) return textureCube(uPrefilterMapLevel1, R).rgb;
-    if (level == 2) return textureCube(uPrefilterMapLevel2, R).rgb;
-    if (level == 3) return textureCube(uPrefilterMapLevel3, R).rgb;
-    return textureCube(uPrefilterMapLevel4, R).rgb;
+    vec3 a;
+    vec3 b;
+
+    if (level < 1.0) {
+        a = textureCube(uPrefilterMapLevel0, R).rgb;
+        b = textureCube(uPrefilterMapLevel1, R).rgb;
+    } else if (level < 2.0) {
+        a = textureCube(uPrefilterMapLevel1, R).rgb;
+        b = textureCube(uPrefilterMapLevel2, R).rgb;
+    } else if (level < 3.0) {
+        a = textureCube(uPrefilterMapLevel2, R).rgb;
+        b = textureCube(uPrefilterMapLevel3, R).rgb;
+    } else {
+        a = textureCube(uPrefilterMapLevel3, R).rgb;
+        b = textureCube(uPrefilterMapLevel4, R).rgb;
+    }
+
+    return mix(a, b, t);
 }
 
 void main() {
