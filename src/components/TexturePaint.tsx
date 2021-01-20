@@ -199,7 +199,6 @@ export default function TexturePaint() {
                     position={cursorPosition}
                     radius={
                         windowManager.brushEngine.getRadiusForStroke(
-                            windowManager.brushEngine.radius,
                             { pressure }
                         ) * scale
                     }

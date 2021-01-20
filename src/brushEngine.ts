@@ -10,7 +10,55 @@ import fragBrush2dShader from './shaders/brush/2d.shader/frag.glsl';
 
 import vertBrush3dShader from './shaders/brush/3d.shader/vert.glsl';
 import fragBrush3dShader from './shaders/brush/3d.shader/frag.glsl';
-import Mesh from './mesh';
+
+class Spacer {
+    spacing: number;
+
+    lastCoord: vec2;
+    lastPressure: number;
+    soFar: number;
+
+    constructor(spacing: number, start: vec2, pressure: number) {
+        this.spacing = spacing;
+
+        this.lastCoord = vec2.clone(start);
+        this.lastPressure = pressure;
+        this.soFar = 0;
+    }
+
+    // TODO: basic smoothing
+    segmentTo(
+        coord: vec2,
+        pressure: number,
+        iteration: (center: vec2, pressure: number) => number
+    ) {
+        const displacement = vec2.create();
+        vec2.sub(displacement, coord, this.lastCoord);
+        let length = vec2.len(displacement);
+        const currentPoint = vec2.create();
+
+        while (this.soFar <= length) {
+            const t = this.soFar / length;
+            vec2.scale(currentPoint, displacement, t);
+            vec2.add(currentPoint, currentPoint, this.lastCoord);
+
+            const currentPressure = lerp(this.lastPressure, pressure, t);
+
+            const radius = iteration(currentPoint, currentPressure);
+
+            let nextSpacing = this.spacing * radius;
+            if (nextSpacing < 1) {
+                nextSpacing = 1;
+            }
+            this.soFar += nextSpacing;
+        }
+
+        this.soFar -= length;
+
+        this.lastPressure = pressure;
+        vec2.copy(this.lastCoord, coord);
+    }
+}
 
 export default class BrushEngine {
     gl: WebGLRenderingContext;
@@ -21,9 +69,8 @@ export default class BrushEngine {
 
     slate: Slate;
 
-    segmentStart: vec2;
-    segmentStartPressure: number;
-    segmentSoFar: number;
+    spacer: Spacer;
+    spacer3d: Spacer;
     windowManager: WindowManager;
 
     stampVertices: number[];
@@ -52,10 +99,6 @@ export default class BrushEngine {
         this.windowManager = windowManager;
         this.slate = windowManager.slate;
 
-        this.segmentStart = vec2.create();
-        this.segmentStartPressure = 0;
-        this.segmentSoFar = 0;
-
         this.stampVertices = [];
         this.stampUVs = [];
         this.stampRadius = [];
@@ -81,9 +124,7 @@ export default class BrushEngine {
     }
 
     startStroke(imageCoord: vec2, pressure: number) {
-        vec2.copy(this.segmentStart, imageCoord);
-        this.segmentStartPressure = pressure;
-        this.segmentSoFar = 0;
+        this.spacer = new Spacer(this.spacing, imageCoord, pressure);
 
         this.stampVertices = [];
         this.stampUVs = [];
@@ -91,61 +132,48 @@ export default class BrushEngine {
     }
 
     continueStroke(imageCoord: vec2, pressure: number) {
-        const displacement = vec2.create();
-        vec2.sub(displacement, imageCoord, this.segmentStart);
-        let segmentLength = vec2.len(displacement);
-        const currentPoint = vec2.create();
+        if (this.spacer) {
+            this.spacer.segmentTo(imageCoord, pressure, (coord, pressure) => this.iteration(coord, pressure));
 
-        while (this.segmentSoFar <= segmentLength) {
-            const t = this.segmentSoFar / segmentLength;
-            vec2.scale(currentPoint, displacement, t);
-            vec2.add(currentPoint, currentPoint, this.segmentStart);
-
-            const currentPressure = lerp(
-                this.segmentStartPressure,
-                pressure,
-                t
-            );
-
-            const radius = this.iteration(currentPoint, currentPressure);
-
-            let nextSpacing = this.spacing * radius;
-            if (nextSpacing < 1) {
-                nextSpacing = 1;
-            }
-            this.segmentSoFar += nextSpacing;
+            this.slate.markUpdate();
         }
-
-        this.segmentSoFar -= segmentLength;
-        if (segmentLength < 0) {
-            segmentLength = 0;
-        }
-
-        this.segmentStartPressure = pressure;
-        vec2.copy(this.segmentStart, imageCoord);
-
-        this.slate.markUpdate();
     }
 
     finishStroke(imageCoord: vec2, pressure: number) {
+        this.spacer = null;
+
         this.iteration(imageCoord, pressure);
         this.updateTextures();
         this.slate.apply();
     }
 
-    startStroke3D(brushCenter: vec3, pressure: number) {
+    startStroke3D(uiCoord: vec2, pressure: number) {
+        this.spacer3d = new Spacer(this.spacing, uiCoord, pressure); // TODO: handle spacing for 3d correctly
         this.stamp3d = [];
     }
 
-    continueStroke3D(brushCenter: vec3, pressure: number) {
-        // TODO: use same spacing approach as 2d
-        this.iteration3d(brushCenter, pressure);
-        this.updateTextures3D();
-        this.slate.markUpdate();
+    continueStroke3D(uiCoord: vec2, pressure: number, getCoord: (uiCoord: vec2) => vec3) {
+        if (this.spacer3d) {
+            this.spacer3d.segmentTo(uiCoord, pressure, (coord, pressure) => {
+                const brushCenter = getCoord(coord);
+                if (brushCenter) {
+                    return this.iteration3d(brushCenter, pressure);
+                }
+
+                return this.getRadiusForStroke({ pressure })
+            })
+
+            this.slate.markUpdate();
+        }
     }
 
-    finishStroke3D(brushCenter: vec3, pressure: number) {
-        this.iteration3d(brushCenter, pressure);
+    finishStroke3D(uiCoord: vec2, pressure: number, getCoord: (uiCoord: vec2) => vec3) {
+        this.spacer3d = null;
+
+        const brushCenter = getCoord(uiCoord);
+        if (brushCenter) {
+            this.iteration3d(brushCenter, pressure);
+        }
         this.updateTextures3D();
         this.slate.apply();
     }
@@ -153,7 +181,7 @@ export default class BrushEngine {
     private iteration(brushCenter: vec2, pressure: number) {
         // a single dot of the brush
 
-        const radius = this.getRadiusForStroke(this.radius, { pressure });
+        const radius = this.getRadiusForStroke({ pressure });
 
         if (
             brushCenter[0] <= -radius ||
@@ -194,16 +222,16 @@ export default class BrushEngine {
     private iteration3d(brushCenter: vec3, pressure: number) {
         // a single dot of the brush
 
-        const radius = this.getRadiusForStroke(this.radius, { pressure });
+        const radius = this.getRadiusForStroke({ pressure });
 
         this.stamp3d.push({ center: brushCenter, radius });
 
         return radius;
     }
 
-    getRadiusForStroke(radius: number, { pressure }) {
+    getRadiusForStroke({ pressure }) {
         const factor = pressure * pressure;
-        return radius * factor;
+        return this.radius * factor;
     }
 
     private updateTextures2D() {
