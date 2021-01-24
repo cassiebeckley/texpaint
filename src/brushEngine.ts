@@ -133,7 +133,9 @@ export default class BrushEngine {
 
     continueStroke(imageCoord: vec2, pressure: number) {
         if (this.spacer) {
-            this.spacer.segmentTo(imageCoord, pressure, (coord, pressure) => this.iteration(coord, pressure));
+            this.spacer.segmentTo(imageCoord, pressure, (coord, pressure) =>
+                this.iteration(coord, pressure)
+            );
 
             this.slate.markUpdate();
         }
@@ -152,7 +154,11 @@ export default class BrushEngine {
         this.stamp3d = [];
     }
 
-    continueStroke3D(uiCoord: vec2, pressure: number, getCoord: (uiCoord: vec2) => vec3) {
+    continueStroke3D(
+        uiCoord: vec2,
+        pressure: number,
+        getCoord: (uiCoord: vec2) => vec3
+    ) {
         if (this.spacer3d) {
             this.spacer3d.segmentTo(uiCoord, pressure, (coord, pressure) => {
                 const brushCenter = getCoord(coord);
@@ -160,14 +166,18 @@ export default class BrushEngine {
                     return this.iteration3d(brushCenter, pressure);
                 }
 
-                return this.getRadiusForStroke({ pressure })
-            })
+                return this.getRadiusForStroke({ pressure });
+            });
 
             this.slate.markUpdate();
         }
     }
 
-    finishStroke3D(uiCoord: vec2, pressure: number, getCoord: (uiCoord: vec2) => vec3) {
+    finishStroke3D(
+        uiCoord: vec2,
+        pressure: number,
+        getCoord: (uiCoord: vec2) => vec3
+    ) {
         this.spacer3d = null;
 
         const brushCenter = getCoord(uiCoord);

@@ -132,144 +132,23 @@ export default class Mesh {
         brdfLUT: WebGLTexture,
         backgroundMatrix: mat4
     ) {
-        gl.useProgram(this.standardShader.program);
-
-        // set projection and model*view matrices;
-        gl.uniformMatrix4fv(
-            this.standardShader.uniforms.uProjectionMatrix,
-            false,
-            projectionMatrix
-        );
-        gl.uniformMatrix4fv(
-            this.standardShader.uniforms.uModelViewMatrix,
-            false,
-            modelViewMatrix
-        );
-        // Matrix to represent lighting rotation
-        gl.uniformMatrix4fv(
-            this.standardShader.uniforms.uBackgroundMatrix,
-            false,
-            backgroundMatrix
-        );
-
-        const invModelView = mat4.create();
-        mat4.invert(invModelView, modelViewMatrix);
-
-        const cameraPos = vec3.create();
-        vec3.transformMat4(cameraPos, cameraPos, invModelView);
-
-        gl.uniform3fv(this.standardShader.uniforms.uCameraPosition, cameraPos);
-
-        {
-            const size = 3;
-            const type = gl.FLOAT; // 32 bit floats
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-            gl.vertexAttribPointer(
-                this.standardShader.attributes.aVertexPosition,
-                size,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(
-                this.standardShader.attributes.aVertexPosition
-            );
-        }
-
-        {
-            const size = 2;
-            const type = gl.FLOAT;
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
-            gl.vertexAttribPointer(
-                this.standardShader.attributes.aTextureCoord,
-                size,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(
-                this.standardShader.attributes.aTextureCoord
-            );
-        }
-
-        {
-            const size = 3;
-            const type = gl.FLOAT;
-            const normalize = true;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
-            gl.vertexAttribPointer(
-                this.standardShader.attributes.aVertexNormal,
-                size,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(
-                this.standardShader.attributes.aVertexNormal
-            );
-        }
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.slate.albedo);
-        gl.uniform1i(this.standardShader.uniforms.uAlbedo, 0);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, this.slate.roughness);
-        gl.uniform1i(this.standardShader.uniforms.uRoughness, 1);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        gl.activeTexture(gl.TEXTURE2);
-        gl.bindTexture(gl.TEXTURE_2D, this.slate.metallic);
-        gl.uniform1i(this.standardShader.uniforms.uMetallic, 2);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        gl.activeTexture(gl.TEXTURE3);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, irradiance);
-        gl.uniform1i(this.standardShader.uniforms.uIrradiance, 3);
-
-        gl.activeTexture(gl.TEXTURE4);
-        gl.bindTexture(gl.TEXTURE_2D, brdfLUT);
-        gl.uniform1i(this.standardShader.uniforms.uBrdfLUT, 4);
-
-        gl.activeTexture(gl.TEXTURE5);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[0]);
-        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel0, 5);
-
-        gl.activeTexture(gl.TEXTURE6);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[1]);
-        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel1, 6);
-
-        gl.activeTexture(gl.TEXTURE7);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[2]);
-        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel2, 7);
-
-        gl.activeTexture(gl.TEXTURE8);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[3]);
-        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel3, 8);
-
-        gl.activeTexture(gl.TEXTURE9);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[4]);
-        gl.uniform1i(this.standardShader.uniforms.uPrefilterMapLevel4, 9);
-
-        gl.drawElements(
-            gl.TRIANGLES,
-            this.data.triangles.length * 3,
-            gl.UNSIGNED_SHORT,
-            0
+        drawStandard(
+            gl,
+            modelViewMatrix,
+            projectionMatrix,
+            irradiance,
+            prefilterMaps,
+            brdfLUT,
+            backgroundMatrix,
+            this.standardShader,
+            this.vertexBuffer,
+            this.uvBuffer,
+            this.normalBuffer,
+            this.indexBuffer,
+            this.slate.albedo,
+            this.slate.roughness,
+            this.slate.metallic,
+            this.data.triangles.length
         );
     }
 
@@ -367,7 +246,7 @@ export default class Mesh {
         this.drawBuffer(gl, modelViewMatrix, projectionMatrix, false);
     }
 
-    drawUV(
+    drawUVLines(
         gl: WebGLRenderingContext,
         modelViewMatrix: mat4,
         uiProjectionMatrix: mat4
@@ -439,3 +318,151 @@ const flatten = (vs): number[] => {
 
     return flat;
 };
+
+export function drawStandard(
+    gl: WebGLRenderingContext,
+    modelViewMatrix: mat4,
+    projectionMatrix: mat4,
+    irradiance: WebGLTexture,
+    prefilterMaps: WebGLTexture[],
+    brdfLUT: WebGLTexture,
+    backgroundMatrix: mat4,
+    standardShader: Shader,
+    vertexBuffer: WebGLBuffer,
+    uvBuffer: WebGLBuffer,
+    normalBuffer: WebGLBuffer,
+    indexBuffer: WebGLBuffer,
+    albedo: WebGLTexture,
+    roughness: WebGLTexture,
+    metallic: WebGLTexture,
+    triangleCount: number
+) {
+    gl.useProgram(standardShader.program);
+
+    // set projection and model*view matrices;
+    gl.uniformMatrix4fv(
+        standardShader.uniforms.uProjectionMatrix,
+        false,
+        projectionMatrix
+    );
+    gl.uniformMatrix4fv(
+        standardShader.uniforms.uModelViewMatrix,
+        false,
+        modelViewMatrix
+    );
+    // Matrix to represent lighting rotation
+    gl.uniformMatrix4fv(
+        standardShader.uniforms.uBackgroundMatrix,
+        false,
+        backgroundMatrix
+    );
+
+    const invModelView = mat4.create();
+    mat4.invert(invModelView, modelViewMatrix);
+
+    const cameraPos = vec3.create();
+    vec3.transformMat4(cameraPos, cameraPos, invModelView);
+
+    gl.uniform3fv(standardShader.uniforms.uCameraPosition, cameraPos);
+
+    {
+        const size = 3;
+        const type = gl.FLOAT; // 32 bit floats
+        const normalize = false;
+        const stride = 0;
+        const offset = 0;
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.vertexAttribPointer(
+            standardShader.attributes.aVertexPosition,
+            size,
+            type,
+            normalize,
+            stride,
+            offset
+        );
+        gl.enableVertexAttribArray(standardShader.attributes.aVertexPosition);
+    }
+
+    {
+        const size = 2;
+        const type = gl.FLOAT;
+        const normalize = false;
+        const stride = 0;
+        const offset = 0;
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+        gl.vertexAttribPointer(
+            standardShader.attributes.aTextureCoord,
+            size,
+            type,
+            normalize,
+            stride,
+            offset
+        );
+        gl.enableVertexAttribArray(standardShader.attributes.aTextureCoord);
+    }
+
+    {
+        const size = 3;
+        const type = gl.FLOAT;
+        const normalize = true;
+        const stride = 0;
+        const offset = 0;
+        gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+        gl.vertexAttribPointer(
+            standardShader.attributes.aVertexNormal,
+            size,
+            type,
+            normalize,
+            stride,
+            offset
+        );
+        gl.enableVertexAttribArray(standardShader.attributes.aVertexNormal);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, albedo);
+    gl.uniform1i(standardShader.uniforms.uAlbedo, 0);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, roughness);
+    gl.uniform1i(standardShader.uniforms.uRoughness, 1);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, metallic);
+    gl.uniform1i(standardShader.uniforms.uMetallic, 2);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, irradiance);
+    gl.uniform1i(standardShader.uniforms.uIrradiance, 3);
+
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, brdfLUT);
+    gl.uniform1i(standardShader.uniforms.uBrdfLUT, 4);
+
+    gl.activeTexture(gl.TEXTURE5);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[0]);
+    gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel0, 5);
+
+    gl.activeTexture(gl.TEXTURE6);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[1]);
+    gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel1, 6);
+
+    gl.activeTexture(gl.TEXTURE7);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[2]);
+    gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel2, 7);
+
+    gl.activeTexture(gl.TEXTURE8);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[3]);
+    gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel3, 8);
+
+    gl.activeTexture(gl.TEXTURE9);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[4]);
+    gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel4, 9);
+
+    gl.drawElements(gl.TRIANGLES, triangleCount * 3, gl.UNSIGNED_SHORT, 0);
+}

@@ -107,7 +107,11 @@ export default class TextureDisplay {
         if (drawUVMap && mesh) {
             mat4.scale(modelViewMatrix, modelViewMatrix, [1, -1, 1]);
             mat4.translate(modelViewMatrix, modelViewMatrix, [0, -1, 0]);
-            mesh.drawUV(gl, modelViewMatrix, windowManager.uiProjectionMatrix);
+            mesh.drawUVLines(
+                gl,
+                modelViewMatrix,
+                windowManager.uiProjectionMatrix
+            );
         }
     }
 }

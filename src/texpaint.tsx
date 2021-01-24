@@ -93,6 +93,7 @@ const App = () => {
                     }}
                 >
                     {showTexture && <TexturePaint />}
+                    {showTexture && showMesh && <div className="divider" />}
                     {showMesh && <MeshPaint />}
                     {showShaders && (
                         <Modal

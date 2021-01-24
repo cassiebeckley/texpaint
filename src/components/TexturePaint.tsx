@@ -198,9 +198,9 @@ export default function TexturePaint() {
                 <Cursor
                     position={cursorPosition}
                     radius={
-                        windowManager.brushEngine.getRadiusForStroke(
-                            { pressure }
-                        ) * scale
+                        windowManager.brushEngine.getRadiusForStroke({
+                            pressure,
+                        }) * scale
                     }
                 />
                 {/* TODO: make this come from UI state rather than the brush engine (not watched by React) */}

@@ -155,7 +155,10 @@ export default function MeshPaint({}) {
                 handleRotateStart(coords);
             }
         } else if (e.button === 0 && paintPoint) {
-            windowManager.brushEngine.startStroke3D([coords[0], coords[1]], e.pressure);
+            windowManager.brushEngine.startStroke3D(
+                [coords[0], coords[1]],
+                e.pressure
+            );
             setPressure(e.pressure);
         } else if (e.button === 2) {
             handleRotateBackgroundStart(e.clientX);
@@ -164,7 +167,7 @@ export default function MeshPaint({}) {
 
     const getPaintPoint = (coords: vec2) => {
         const widgetBounds = div.current.getBoundingClientRect(); // TODO: see if caching this helps performance
-        
+
         const view = mat4.create();
         const proj = mat4.create();
         getView(view, position, rotation, scale);
@@ -217,7 +220,7 @@ export default function MeshPaint({}) {
                 setPaintNormal(null);
             }
         }
-    }
+    };
 
     const handlePointerUp = (e: React.PointerEvent) => {
         const coords = vec3.create();
@@ -228,7 +231,11 @@ export default function MeshPaint({}) {
         } else if (pan) {
             handlePanStop();
         } else if (e.button === 0) {
-            windowManager.brushEngine.finishStroke3D([coords[0], coords[1]], e.pressure, getPaintPoint);
+            windowManager.brushEngine.finishStroke3D(
+                [coords[0], coords[1]],
+                e.pressure,
+                getPaintPoint
+            );
             setPressure(1);
         } else if (rotatingBackground) {
             handleRotateBackgroundStop();
@@ -239,15 +246,21 @@ export default function MeshPaint({}) {
         const coords = vec3.create();
         vec3.set(coords, e.clientX, e.clientY, 0);
 
-        getPaintPoint([coords[0], coords[1]]); // TODO: avoid calculating this twice (here and below in the click handler)
+        if (e.buttons & BINARY_LEFT_MOUSE_BUTTON) {
+            windowManager.brushEngine.continueStroke3D(
+                [coords[0], coords[1]],
+                e.pressure,
+                getPaintPoint
+            );
+            setPressure(e.pressure);
+        } else {
+            getPaintPoint([coords[0], coords[1]]);
+        }
 
         if (rotating) {
             handleRotateMove(coords);
         } else if (pan) {
             handlePanMove(coords);
-        } else if (e.buttons & BINARY_LEFT_MOUSE_BUTTON) {
-            windowManager.brushEngine.continueStroke3D([coords[0], coords[1]], e.pressure, getPaintPoint);
-            setPressure(e.pressure);
         } else if (rotatingBackground) {
             handleRotateBackgroundMove(e.clientX);
         }
@@ -287,9 +300,9 @@ export default function MeshPaint({}) {
                     scale,
                     brushCursor: paintPoint,
                     brushNormal: paintNormal,
-                    brushRadius: windowManager.brushEngine.getRadiusForStroke(
-                        { pressure }
-                    ),
+                    brushRadius: windowManager.brushEngine.getRadiusForStroke({
+                        pressure,
+                    }),
                     backgroundOffset,
                 }}
                 style={{ height: '100%', cursor, position: 'relative' }}
