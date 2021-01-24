@@ -1,6 +1,7 @@
 import { mat4, vec2, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
 import { DEFAULT_BRUSH_SPACING } from './constants';
+import Lighting from './lighting';
 import Image, { ImageFormat, ImageStorage } from './loader/image';
 import MeshData from './loader/meshData';
 import Mesh from './mesh';
@@ -34,6 +35,8 @@ export default class WindowManager {
     mesh: Mesh; // and this
     brushEngine: BrushEngine; // and this as well
     viewport: number[];
+
+    lighting: Lighting;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -83,6 +86,9 @@ export default class WindowManager {
             DEFAULT_BRUSH_SPACING,
             this
         );
+
+        this.lighting = new Lighting(this.gl);
+        this.lighting.load().then(() => this.drawOnNextFrame());
     }
 
     setViewport(x: number, y: number, width: number, height: number) {
