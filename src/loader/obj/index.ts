@@ -14,7 +14,8 @@ const reIndex = (
     vertices: vec3[],
     normals: vec3[],
     uvs: vec2[],
-    triangles: IndexedTriangle[]
+    triangles: IndexedTriangle[],
+    materialId: string
 ): MeshData => {
     const allVertices = [];
     const allNormals = [];
@@ -35,7 +36,7 @@ const reIndex = (
     const newIndex = {};
     let currentIndex = 0;
 
-    const mesh = new MeshData(name);
+    const mesh = new MeshData(name, materialId);
 
     for (let i = 0; i < allVertices.length; i += 3) {
         const triangle: Triangle = [0, 0, 0];
@@ -64,6 +65,8 @@ const reIndex = (
 
 const utf8decoder = new TextDecoder();
 
+let materialNum = 0;
+
 export default async function parseWaveformObj(
     objBuffer: ArrayBuffer
 ): Promise<Asset> {
@@ -76,12 +79,14 @@ export default async function parseWaveformObj(
 
     let name: string = '';
     let indexedTriangles: IndexedTriangle[] = [];
+    let materialId = `material${materialNum++}`;
 
     let startIndex = 0;
-    let currentIndex = 0; // TODO: check if this actually works
 
     const saveMesh = () => {
-        meshes.push(reIndex(name, vertices, normals, uvs, indexedTriangles));
+        meshes.push(
+            reIndex(name, vertices, normals, uvs, indexedTriangles, materialId)
+        );
 
         indexedTriangles = [];
     };
@@ -98,8 +103,10 @@ export default async function parseWaveformObj(
                 }
                 name = operands[1];
                 break;
+            case 'usemtl': // at the moment I'm assuming there's only one material per mesh
+                materialId = operands[1];
+                break;
             case 'v':
-                currentIndex++;
                 const vertex = vec3.create();
                 vec3.set(
                     vertex,

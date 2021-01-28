@@ -13,8 +13,10 @@ const BINARY_LEFT_MOUSE_BUTTON = 0b1;
 const BINARY_MIDDLE_MOUSE_BUTTON = 0b10;
 const BINARY_RIGHT_MOUSE_BUTTON = 0b100;
 
-export default function TexturePaint({ channel }) {
+export default function TexturePaint({ channel, materials }) {
     const windowManager = useContext(WindowContext);
+
+    const [slateId, setSlateId] = useState('');
 
     const [view, setView] = useState(() => {
         const viewMatrix = mat4.create();
@@ -34,14 +36,22 @@ export default function TexturePaint({ channel }) {
 
     const div = useRef(null);
 
+    const slate = windowManager.materials.get(slateId);
+
+    useEffect(() => {
+        if (materials && materials.length > 0 && slateId === '') {
+            setSlateId(materials[0]);
+        }
+    }, [materials]);
+
     useEffect(() => {
         const bounds = div.current.getBoundingClientRect();
 
         const adjusted = mat4.create();
         mat4.identity(adjusted);
         mat4.translate(adjusted, adjusted, [
-            bounds.width / 2 - windowManager.slate.width / 2,
-            bounds.height / 2 - windowManager.slate.height / 2,
+            bounds.width / 2 - windowManager.projectSize / 2,
+            bounds.height / 2 - windowManager.projectSize / 2,
             0,
         ]);
 
@@ -49,10 +59,7 @@ export default function TexturePaint({ channel }) {
     }, []);
 
     const uiToImageCoordinates = (uiCoord: vec2) => {
-        const modelMatrix = getModelMatrix(
-            windowManager.slate.width,
-            windowManager.slate.height
-        );
+        const modelMatrix = getModelMatrix(windowManager.projectSize);
 
         const modelViewMatrix = mat4.create();
         mat4.mul(modelViewMatrix, view, modelMatrix);
@@ -63,8 +70,8 @@ export default function TexturePaint({ channel }) {
         const imageCoord = vec2.create();
         vec2.transformMat4(imageCoord, uiCoord, invModelViewMatrix);
         vec2.mul(imageCoord, imageCoord, [
-            windowManager.slate.width,
-            windowManager.slate.height,
+            windowManager.projectSize,
+            windowManager.projectSize,
         ]);
 
         return imageCoord;
@@ -139,7 +146,13 @@ export default function TexturePaint({ channel }) {
             handlePanStop();
         } else if (e.button === 0) {
             const imageCoords = uiToImageCoordinates(coords);
-            windowManager.brushEngine.finishStroke(imageCoords, e.pressure);
+            if (slate) {
+                windowManager.brushEngine.finishStroke(
+                    slate,
+                    imageCoords,
+                    e.pressure
+                );
+            }
             setPressure(1);
         }
     };
@@ -156,7 +169,13 @@ export default function TexturePaint({ channel }) {
             handlePanMove(coords);
         } else if (e.buttons & BINARY_LEFT_MOUSE_BUTTON) {
             const imageCoords = uiToImageCoordinates(coords);
-            windowManager.brushEngine.continueStroke(imageCoords, e.pressure);
+            if (slate) {
+                windowManager.brushEngine.continueStroke(
+                    slate,
+                    imageCoords,
+                    e.pressure
+                );
+            }
             setPressure(e.pressure);
         }
     };
@@ -172,11 +191,29 @@ export default function TexturePaint({ channel }) {
     mat4.getScaling(scaling, view);
     const scale = scaling[0];
 
+    const materialOptions = [];
+
+    if (materials && materials.length > 0) {
+        for (let id of materials) {
+            materialOptions.push(
+                <option key={id} value={id}>
+                    {id}
+                </option>
+            );
+        }
+    } else {
+        materialOptions.push(
+            <option key="<none>" value="">
+                &lt;none&gt;
+            </option>
+        );
+    }
+
     return (
         <div style={{ flexGrow: 1 }} ref={div}>
             <Widget
                 constructor={TextureDisplay}
-                widgetProps={{ view, drawUVMap: uv, channel }}
+                widgetProps={{ view, drawUVMap: uv, channel, slate }}
                 style={{
                     height: '100%',
                     position: 'relative',
@@ -190,13 +227,21 @@ export default function TexturePaint({ channel }) {
                 onPointerLeave={handlePointerLeave}
             >
                 <div>
-                    <input
-                        type="checkbox"
-                        id="uv"
-                        checked={uv}
-                        onChange={(e) => setUV(e.target.checked)}
-                    />
-                    <label htmlFor="uv">Show UV Map</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            id="uv"
+                            checked={uv}
+                            onChange={(e) => setUV(e.target.checked)}
+                        />
+                        Show UV Map
+                    </label>
+                    <select
+                        value={slateId}
+                        onChange={(e) => setSlateId(e.target.value)}
+                    >
+                        {materialOptions}
+                    </select>
                 </div>
                 <Cursor
                     position={cursorPosition}

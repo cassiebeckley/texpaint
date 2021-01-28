@@ -70,6 +70,7 @@ const App = () => {
     const [showShaders, setShowShaders] = useState(false);
 
     const [channel, setChannel] = useState(Channel.Material);
+    const [materials, setMaterials] = useState([]); // TODO: probably use a reducer to keep track of this
 
     const handleKeydown = (e: KeyboardEvent) => {
         if (e.key === '`' && e.ctrlKey) {
@@ -110,7 +111,9 @@ const App = () => {
                         position: 'relative',
                     }}
                 >
-                    {showTexture && <TexturePaint channel={channel} />}
+                    {showTexture && (
+                        <TexturePaint channel={channel} materials={materials} />
+                    )}
                     {showTexture && showMesh && <div className="divider" />}
                     {showMesh && <MeshPaint />}
                     {showShaders && (
@@ -125,6 +128,7 @@ const App = () => {
                 <MenuBar
                     on2d={() => setShowTexture(!showTexture)}
                     on3d={() => setShowMesh(!showMesh)}
+                    setMaterials={setMaterials}
                 />
             </Renderer>
         </div>

@@ -49,14 +49,15 @@ export default class TextureDisplay {
         windowManager: WindowManager,
         width: number,
         height: number,
-        { view, drawUVMap, channel }
+        { view, drawUVMap, channel, slate }
     ) {
+        if (!slate) {
+            return;
+        }
+
         const gl = windowManager.gl;
 
-        const modelMatrix = getModelMatrix(
-            windowManager.slate.width,
-            windowManager.slate.height
-        );
+        const modelMatrix = getModelMatrix(windowManager.projectSize);
 
         const modelViewMatrix = mat4.create();
         mat4.mul(modelViewMatrix, view, modelMatrix);
@@ -77,9 +78,9 @@ export default class TextureDisplay {
                 2,
                 getUnitRectUVBufferInverted(gl),
                 getUnitRectNormalBuffer(gl),
-                windowManager.slate.albedo,
-                windowManager.slate.roughness,
-                windowManager.slate.metallic,
+                slate.albedo,
+                slate.roughness,
+                slate.metallic,
                 gl.NEAREST,
                 true
             );
@@ -143,16 +144,13 @@ export default class TextureDisplay {
 
             switch (channel) {
                 case Channel.Albedo:
-                    gl.bindTexture(gl.TEXTURE_2D, windowManager.slate.albedo);
+                    gl.bindTexture(gl.TEXTURE_2D, slate.albedo);
                     break;
                 case Channel.Roughness:
-                    gl.bindTexture(
-                        gl.TEXTURE_2D,
-                        windowManager.slate.roughness
-                    );
+                    gl.bindTexture(gl.TEXTURE_2D, slate.roughness);
                     break;
                 case Channel.Metallic:
-                    gl.bindTexture(gl.TEXTURE_2D, windowManager.slate.metallic);
+                    gl.bindTexture(gl.TEXTURE_2D, slate.metallic);
                     break;
             }
 
@@ -179,9 +177,9 @@ export default class TextureDisplay {
     }
 }
 
-export function getModelMatrix(slateWidth: number, slateHeight: number) {
+export function getModelMatrix(slateSize: number) {
     const modelMatrix = mat4.create();
     mat4.identity(modelMatrix);
-    mat4.scale(modelMatrix, modelMatrix, [slateWidth, slateHeight, 1]);
+    mat4.scale(modelMatrix, modelMatrix, [slateSize, slateSize, 1]);
     return modelMatrix;
 }

@@ -1,5 +1,6 @@
 import { mat4, vec2, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
+import Brush from './brush';
 import { DEFAULT_BRUSH_SPACING } from './constants';
 import Lighting from './lighting';
 import Image, { ImageFormat, ImageStorage } from './loader/image';
@@ -33,9 +34,10 @@ export default class WindowManager {
 
     projectSize: number;
 
-    slate: MaterialSlate; // keeping this here until I find a better home for it
+    materials: Map<string, MaterialSlate>; // keeping this here until I find a better home for it
     mesh: Mesh; // and this
     brushEngine: BrushEngine; // and this as well
+    brush: Brush;
     viewport: number[];
 
     lighting: Lighting;
@@ -68,11 +70,15 @@ export default class WindowManager {
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'z' && e.ctrlKey) {
-                this.slate.undo();
+                for (let [_, slate] of this.materials) {
+                    slate.undo();
+                }
 
                 this.drawOnNextFrame();
             } else if ((e.key === 'y' || e.key === 'Z') && e.ctrlKey) {
-                this.slate.redo();
+                for (let [_, slate] of this.materials) {
+                    slate.redo();
+                }
 
                 this.drawOnNextFrame();
             }
@@ -83,13 +89,14 @@ export default class WindowManager {
 
         this.projectSize = 1024; // TODO: let user set when creating project
 
-        this.slate = new MaterialSlate(this, this.projectSize, this.projectSize);
+        this.materials = new Map();
         this.mesh = null;
         this.brushEngine = new BrushEngine(
             brushSize,
             DEFAULT_BRUSH_SPACING,
             this
         );
+        this.brush = new Brush(this.gl);
 
         this.lighting = new Lighting(this.gl);
         this.lighting.load().then(() => this.drawOnNextFrame());
@@ -135,8 +142,10 @@ export default class WindowManager {
     }
 
     draw() {
-        this.brushEngine.updateTextures();
-        this.slate.updateTextures();
+        this.brushEngine.updateTextures(this.materials.get('default')); // TODO: this needs to be set to the TexturePaint slate
+        for (let [_, slate] of this.materials) {
+            slate.updateTextures();
+        }
 
         this.viewportToWindow();
 
@@ -210,8 +219,24 @@ export default class WindowManager {
         this.drawOnNextFrame();
     }
 
-    setMesh(meshData: MeshData) {
-        this.mesh = new Mesh(this.gl, this.slate, meshData);
+    addMesh(meshData: MeshData) {
+        const slate = this.addMaterial(meshData.materialId);
+        this.mesh = new Mesh(this.gl, meshData);
+    }
+
+    addMaterial(materialId: string) {
+        if (this.materials.has(materialId)) {
+            return;
+        }
+
+        const slate = new MaterialSlate(this, materialId);
+        this.materials.set(materialId, slate);
+
+        return slate;
+    }
+
+    getMaterialList() {
+        return Array.from(this.materials.keys());
     }
 }
 

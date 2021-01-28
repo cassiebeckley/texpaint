@@ -67,8 +67,6 @@ export default class BrushEngine {
     spacing: number;
     soft: boolean;
 
-    slate: MaterialSlate;
-
     spacer: Spacer;
     spacer3d: Spacer;
     windowManager: WindowManager;
@@ -97,7 +95,6 @@ export default class BrushEngine {
         this.soft = false;
 
         this.windowManager = windowManager;
-        this.slate = windowManager.slate;
 
         this.stampVertices = [];
         this.stampUVs = [];
@@ -131,22 +128,22 @@ export default class BrushEngine {
         this.stampRadius = [];
     }
 
-    continueStroke(imageCoord: vec2, pressure: number) {
+    continueStroke(slate: MaterialSlate, imageCoord: vec2, pressure: number) {
         if (this.spacer) {
             this.spacer.segmentTo(imageCoord, pressure, (coord, pressure) =>
-                this.iteration(coord, pressure)
+                this.iteration(slate, coord, pressure)
             );
 
-            this.slate.markUpdate();
+            slate.markUpdate();
         }
     }
 
-    finishStroke(imageCoord: vec2, pressure: number) {
+    finishStroke(slate: MaterialSlate, imageCoord: vec2, pressure: number) {
         this.spacer = null;
 
-        this.iteration(imageCoord, pressure);
-        this.updateTextures();
-        this.slate.apply();
+        this.iteration(slate, imageCoord, pressure);
+        this.updateTextures(slate);
+        slate.apply();
     }
 
     startStroke3D(uiCoord: vec2, pressure: number) {
@@ -169,7 +166,9 @@ export default class BrushEngine {
                 return this.getRadiusForStroke({ pressure });
             });
 
-            this.slate.markUpdate();
+            for (let [_, slate] of this.windowManager.materials) {
+                slate.markUpdate();
+            }
         }
     }
 
@@ -184,20 +183,26 @@ export default class BrushEngine {
         if (brushCenter) {
             this.iteration3d(brushCenter, pressure);
         }
-        this.updateTextures3D();
-        this.slate.apply();
+        for (let [_, slate] of this.windowManager.materials) {
+            this.updateTextures3D(slate);
+            slate.apply();
+        }
     }
 
-    private iteration(brushCenter: vec2, pressure: number) {
+    private iteration(
+        slate: MaterialSlate,
+        brushCenter: vec2,
+        pressure: number
+    ) {
         // a single dot of the brush
 
         const radius = this.getRadiusForStroke({ pressure });
 
         if (
             brushCenter[0] <= -radius ||
-            brushCenter[0] >= this.slate.width + radius ||
+            brushCenter[0] >= slate.size + radius ||
             brushCenter[1] <= -radius ||
-            brushCenter[1] >= this.slate.height + radius
+            brushCenter[1] >= slate.size + radius
         ) {
             // entirely outside image bounds
             return radius;
@@ -207,7 +212,7 @@ export default class BrushEngine {
         vec2.set(radiusSquare, radius, radius);
 
         const startPosition = vec2.clone(brushCenter);
-        startPosition[1] = this.slate.height - startPosition[1];
+        startPosition[1] = slate.size - startPosition[1];
         vec2.sub(startPosition, startPosition, radiusSquare);
 
         const side = radius * 2;
@@ -244,7 +249,7 @@ export default class BrushEngine {
         return this.radius * factor;
     }
 
-    private updateTextures2D() {
+    private updateTextures2D(slate: MaterialSlate) {
         if (this.stampVertices.length === 0) {
             return;
         }
@@ -256,11 +261,11 @@ export default class BrushEngine {
             gl.FRAMEBUFFER,
             gl.COLOR_ATTACHMENT0,
             gl.TEXTURE_2D,
-            this.slate.currentOperation,
+            slate.currentOperation,
             0
         );
-        gl.viewport(0, 0, this.slate.width, this.slate.height);
-        gl.scissor(0, 0, this.slate.width, this.slate.height);
+        gl.viewport(0, 0, slate.size, slate.size);
+        gl.scissor(0, 0, slate.size, slate.size);
 
         gl.useProgram(this.brush2dShader.program);
 
@@ -291,15 +296,7 @@ export default class BrushEngine {
         // set projection and model*view matrices;
 
         const projectionMatrix = mat4.create();
-        mat4.ortho(
-            projectionMatrix,
-            0,
-            this.slate.width,
-            this.slate.height,
-            0,
-            -1,
-            1
-        );
+        mat4.ortho(projectionMatrix, 0, slate.size, slate.size, 0, -1, 1);
         const modelViewMatrix = mat4.create();
         mat4.identity(modelViewMatrix);
 
@@ -397,7 +394,7 @@ export default class BrushEngine {
         this.stampRadius = [];
     }
 
-    private updateTextures3D() {
+    private updateTextures3D(slate: MaterialSlate) {
         if (!this.windowManager.mesh || this.stamp3d.length === 0) {
             return;
         }
@@ -414,26 +411,18 @@ export default class BrushEngine {
             gl.FRAMEBUFFER,
             gl.COLOR_ATTACHMENT0,
             gl.TEXTURE_2D,
-            this.slate.currentOperation,
+            slate.currentOperation,
             0
         );
-        gl.viewport(0, 0, this.slate.width, this.slate.height);
-        gl.scissor(0, 0, this.slate.width, this.slate.height);
+        gl.viewport(0, 0, slate.size, slate.size);
+        gl.scissor(0, 0, slate.size, slate.size);
 
         gl.useProgram(this.brush3dShader.program);
 
         // set projection and model*view matrices;
 
         const projectionMatrix = mat4.create();
-        mat4.ortho(
-            projectionMatrix,
-            0,
-            this.slate.width,
-            this.slate.height,
-            0,
-            -1,
-            1
-        );
+        mat4.ortho(projectionMatrix, 0, slate.size, slate.size, 0, -1, 1);
         const modelViewMatrix = mat4.create();
         mat4.identity(modelViewMatrix);
 
@@ -448,14 +437,8 @@ export default class BrushEngine {
             modelViewMatrix
         );
 
-        gl.uniform1i(
-            this.brush3dShader.uniforms.uTextureWidth,
-            this.slate.width
-        );
-        gl.uniform1i(
-            this.brush3dShader.uniforms.uTextureHeight,
-            this.slate.height
-        );
+        gl.uniform1i(this.brush3dShader.uniforms.uTextureWidth, slate.size);
+        gl.uniform1i(this.brush3dShader.uniforms.uTextureHeight, slate.size);
 
         gl.uniform1i(this.brush3dShader.uniforms.uSoft, Number(this.soft));
 
@@ -531,8 +514,13 @@ export default class BrushEngine {
         this.stamp3d = [];
     }
 
-    updateTextures() {
-        this.updateTextures2D();
-        this.updateTextures3D();
+    updateTextures(currentSlate: MaterialSlate) {
+        if (currentSlate) {
+            this.updateTextures2D(currentSlate);
+        }
+
+        for (let [_, slate] of this.windowManager.materials) {
+            this.updateTextures3D(slate);
+        }
     }
 }

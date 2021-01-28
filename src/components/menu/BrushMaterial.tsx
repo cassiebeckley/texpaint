@@ -31,7 +31,7 @@ export default function BrushMaterial({ visible, onClick }) {
                 brushColor={brushColor}
                 setBrushColor={(c: vec3) => {
                     setBrushColor(c);
-                    windowManager.slate.brushColor = c;
+                    windowManager.brush.color = c;
                 }}
             />
             <div
@@ -51,7 +51,7 @@ export default function BrushMaterial({ visible, onClick }) {
                         onChange={(e) => {
                             const r = e.target.valueAsNumber;
                             setRoughness(r);
-                            windowManager.slate.brushRoughness = r;
+                            windowManager.brush.roughness = r;
                         }}
                     />
                 </label>
@@ -66,7 +66,7 @@ export default function BrushMaterial({ visible, onClick }) {
                         onChange={(e) => {
                             const m = e.target.valueAsNumber;
                             setMetallic(e.target.valueAsNumber);
-                            windowManager.slate.brushMetallic = m;
+                            windowManager.brush.metallic = m;
                         }}
                     />
                 </label>

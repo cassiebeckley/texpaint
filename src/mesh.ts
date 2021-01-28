@@ -33,10 +33,7 @@ export default class Mesh {
     positionShader: Shader;
     uvShader: Shader;
 
-    slate: MaterialSlate;
-
-    constructor(gl: WebGLRenderingContext, slate: MaterialSlate, data: MeshData) {
-        this.slate = slate;
+    constructor(gl: WebGLRenderingContext, data: MeshData) {
         this.data = data;
 
         this.vertexBuffer = gl.createBuffer();
@@ -129,8 +126,11 @@ export default class Mesh {
         modelViewMatrix: mat4,
         projectionMatrix: mat4,
         lighting: Lighting,
-        backgroundMatrix: mat4
+        backgroundMatrix: mat4,
+        materials: Map<string, MaterialSlate>
     ) {
+        const slate = materials.get(this.data.materialId);
+
         setUpStandard(
             gl,
             modelViewMatrix,
@@ -142,9 +142,9 @@ export default class Mesh {
             3,
             this.uvBuffer,
             this.normalBuffer,
-            this.slate.albedo,
-            this.slate.roughness,
-            this.slate.metallic
+            slate.albedo,
+            slate.roughness,
+            slate.metallic
         );
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);

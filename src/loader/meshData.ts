@@ -8,9 +8,11 @@ export default class MeshData {
     vertexNormals: vec3[];
     uvs: vec2[];
     triangles: Triangle[];
+    materialId: string;
 
     constructor(
         name: string,
+        materialId: string,
         vertices: vec3[] = [],
         vertexNormals: vec3[] = [],
         uvs: vec2[] = [],
@@ -21,6 +23,7 @@ export default class MeshData {
         this.vertexNormals = vertexNormals;
         this.uvs = uvs;
         this.triangles = triangles;
+        this.materialId = materialId;
     }
 
     raycast(

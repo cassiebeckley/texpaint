@@ -17,6 +17,7 @@ import fragBackgroundShader from '../shaders/workspace/background.shader/frag.gl
 import { FAR, FIELD_OF_VIEW, NEAR } from '../constants';
 import Mesh from '../mesh';
 import type Lighting from '../lighting';
+import MaterialSlate from '../materialSlate';
 
 const UP = vec3.create();
 vec3.set(UP, 0, 1, 0);
@@ -79,6 +80,7 @@ export default class MeshDisplay {
         height: number,
         mesh: Mesh,
         lighting: Lighting,
+        materials: Map<string, MaterialSlate>,
         {
             position,
             rotation,
@@ -106,7 +108,14 @@ export default class MeshDisplay {
             mat4.identity(backgroundMatrix);
             mat4.rotateY(backgroundMatrix, backgroundMatrix, -backgroundOffset);
 
-            mesh.draw(gl, view, projection, lighting, backgroundMatrix);
+            mesh.draw(
+                gl,
+                view,
+                projection,
+                lighting,
+                backgroundMatrix,
+                materials
+            );
         }
 
         if (brushCursor) {
@@ -145,6 +154,7 @@ export default class MeshDisplay {
             height,
             windowManager.mesh,
             windowManager.lighting,
+            windowManager.materials,
             widgetProps
         );
     }

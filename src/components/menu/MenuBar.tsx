@@ -13,7 +13,7 @@ enum SettingsTab {
     Settings,
 }
 
-export default function MenuBar({ on2d, on3d }) {
+export default function MenuBar({ on2d, on3d, setMaterials }) {
     const windowManager = useContext(WindowContext);
 
     const [openTab, setOpenTab] = useState(SettingsTab.None);
@@ -38,11 +38,13 @@ export default function MenuBar({ on2d, on3d }) {
                 const asset = await loadAssetFromBlob(file.name, file);
                 switch (asset.type) {
                     case AssetType.Image:
-                        windowManager.slate.loadAlbedo(asset.image);
+                        // windowManager.slate.loadAlbedo(asset.image);
+                        // TODO: probably try to match this up by name
                         break;
                     case AssetType.Mesh:
                         const mesh = asset.meshes[0];
-                        windowManager.setMesh(mesh);
+                        windowManager.addMesh(mesh);
+                        setMaterials(windowManager.getMaterialList());
                         break;
                 }
                 windowManager.drawOnNextFrame();

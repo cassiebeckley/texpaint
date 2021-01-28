@@ -103,8 +103,8 @@ export default class MaterialSlate {
     windowManager: WindowManager;
     gl: WebGLRenderingContext;
 
-    width: number;
-    height: number;
+    id: string;
+    size: number;
 
     history: Layer[];
     historyIndex: number;
@@ -119,19 +119,14 @@ export default class MaterialSlate {
 
     currentOperation: WebGLTexture;
 
-    private brushAlbedo: WebGLTexture;
-
     compositor: Compositor;
 
-    private brushRoughnessTexture: WebGLTexture;
-    private brushMetallicTexture: WebGLTexture;
-
-    constructor(wm: WindowManager, width: number, height: number) {
+    constructor(wm: WindowManager, id: string) {
         this.windowManager = wm;
         this.gl = wm.gl;
 
-        this.width = width;
-        this.height = height;
+        this.id = id;
+        this.size = wm.projectSize;
 
         this.updated = true;
 
@@ -139,29 +134,29 @@ export default class MaterialSlate {
 
         this.layer = new Layer(
             this.gl,
-            this.width,
-            this.height,
+            this.size,
+            this.size,
             new Uint8ClampedArray([c, c, c, 255]),
             DEFAULT_ROUGHNESS,
             DEFAULT_METALLIC
         );
 
-        this.albedo = createLayerTexture(this.gl, this.width, this.height);
-        this.roughness = createLayerTexture(this.gl, this.width, this.height);
-        this.metallic = createLayerTexture(this.gl, this.width, this.height);
+        this.albedo = createLayerTexture(this.gl, this.size, this.size);
+        this.roughness = createLayerTexture(this.gl, this.size, this.size);
+        this.metallic = createLayerTexture(this.gl, this.size, this.size);
 
         this.currentOperation = createLayerTexture(
             this.gl,
-            this.width,
-            this.height,
+            this.size,
+            this.size,
             new Uint8ClampedArray([0, 0, 0, 255])
         );
 
         this.history = [
             new Layer(
                 this.gl,
-                this.width,
-                this.height,
+                this.size,
+                this.size,
                 new Uint8ClampedArray([c, c, c, 255]),
                 DEFAULT_ROUGHNESS,
                 DEFAULT_METALLIC
@@ -171,64 +166,13 @@ export default class MaterialSlate {
 
         const gl = this.gl;
 
-        this.brushAlbedo = gl.createTexture();
-        this.brushRoughnessTexture = gl.createTexture();
-        this.brushMetallicTexture = gl.createTexture();
-
-        this.brushColor = vec3.create();
-        this.brushRoughness = DEFAULT_ROUGHNESS;
-        this.brushMetallic = DEFAULT_METALLIC;
-
-        this.compositor = new Compositor(wm, width, height);
-    }
-
-    set brushColor(sRgb: vec3) {
-        const [r, g, b] = sRgb.map(srgbToRgb);
-        fillTexture(
-            this.gl,
-            this.brushAlbedo,
-            1,
-            1,
-            new Uint8ClampedArray([r * 255, g * 255, b * 255, 255])
-        );
-    }
-
-    set brushRoughness(roughness: number) {
-        const roughnessByte = roughness * 255;
-        fillTexture(
-            this.gl,
-            this.brushRoughnessTexture,
-            1,
-            1,
-            new Uint8ClampedArray([
-                roughnessByte,
-                roughnessByte,
-                roughnessByte,
-                255,
-            ])
-        );
-    }
-
-    set brushMetallic(metallic: number) {
-        const metallicByte = metallic * 255;
-        fillTexture(
-            this.gl,
-            this.brushMetallicTexture,
-            1,
-            1,
-            new Uint8ClampedArray([
-                metallicByte,
-                metallicByte,
-                metallicByte,
-                255,
-            ])
-        );
+        this.compositor = new Compositor(wm, this.size, this.size);
     }
 
     loadAlbedo(image: Image) {
         // TODO: add options to load metallic and roughness textures
-        this.width = image.width;
-        this.height = image.height;
+        this.size = image.width;
+        this.size = image.height;
 
         this.compositor.setDimensions(image.width, image.height);
 
@@ -275,12 +219,12 @@ export default class MaterialSlate {
         fillTexture(
             this.gl,
             this.currentOperation,
-            this.width,
-            this.height,
+            this.size,
+            this.size,
             new Uint8ClampedArray([0, 0, 0, 255])
         );
 
-        this.layer = new Layer(this.gl, this.width, this.height);
+        this.layer = new Layer(this.gl, this.size, this.size);
 
         this.compositor.run(this.layer.albedo, O(this.albedo).mix(this.albedo));
         this.compositor.run(
@@ -333,21 +277,27 @@ export default class MaterialSlate {
         this.compositor.run(
             this.albedo,
             O(this.layer.albedo).mix(
-                O(this.brushAlbedo).mask(this.currentOperation)
+                O(this.windowManager.brush.albedoTexture).mask(
+                    this.currentOperation
+                )
             )
         );
 
         this.compositor.run(
             this.roughness,
             O(this.layer.roughness).mix(
-                O(this.brushRoughnessTexture).mask(this.currentOperation)
+                O(this.windowManager.brush.roughnessTexture).mask(
+                    this.currentOperation
+                )
             )
         );
 
         this.compositor.run(
             this.metallic,
             O(this.layer.metallic).mix(
-                O(this.brushMetallicTexture).mask(this.currentOperation)
+                O(this.windowManager.brush.metallicTexture).mask(
+                    this.currentOperation
+                )
             )
         );
 
