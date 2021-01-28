@@ -142,7 +142,7 @@ export default class WindowManager {
     }
 
     draw() {
-        this.brushEngine.updateTextures(this.materials.get('default')); // TODO: this needs to be set to the TexturePaint slate
+        this.brushEngine.updateTextures();
         for (let [_, slate] of this.materials) {
             slate.updateTextures();
         }
@@ -220,7 +220,7 @@ export default class WindowManager {
     }
 
     addMesh(meshData: MeshData) {
-        const slate = this.addMaterial(meshData.materialId);
+        this.addMaterial(meshData.materialId);
         this.mesh = new Mesh(this.gl, meshData);
     }
 

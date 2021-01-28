@@ -12,8 +12,7 @@ import MeshPaint from './components/MeshPaint';
 import MeshDisplay from './widgets/meshDisplay';
 import Widget from './widget';
 import ImageWidget from './widgets/imageWidget';
-import ViewAssetCache from './components/debug/ViewAssetCache';
-import ViewShaderCache from './components/debug/ViewShaderCache';
+import Debug from './components/debug/Debug';
 import Modal from './components/Modal';
 
 const Renderer = ({
@@ -121,7 +120,7 @@ const App = () => {
                             style={{ width: '1000px' }}
                             onClose={() => setShowShaders(false)}
                         >
-                            <ViewShaderCache />
+                            <Debug />
                         </Modal>
                     )}
                 </div>

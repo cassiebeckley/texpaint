@@ -211,6 +211,23 @@ export default function TexturePaint({ channel, materials }) {
 
     return (
         <div style={{ flexGrow: 1 }} ref={div}>
+        <div style={{color: 'white', padding: '10px'}}>
+            <label>
+                <input
+                    type="checkbox"
+                    id="uv"
+                    checked={uv}
+                    onChange={(e) => setUV(e.target.checked)}
+                />
+                Show UV Map
+            </label>
+            <select
+                value={slateId}
+                onChange={(e) => setSlateId(e.target.value)}
+            >
+                {materialOptions}
+            </select>
+        </div>
             <Widget
                 constructor={TextureDisplay}
                 widgetProps={{ view, drawUVMap: uv, channel, slate }}
@@ -226,23 +243,6 @@ export default function TexturePaint({ channel, materials }) {
                 onPointerMove={handlePointerMove}
                 onPointerLeave={handlePointerLeave}
             >
-                <div>
-                    <label>
-                        <input
-                            type="checkbox"
-                            id="uv"
-                            checked={uv}
-                            onChange={(e) => setUV(e.target.checked)}
-                        />
-                        Show UV Map
-                    </label>
-                    <select
-                        value={slateId}
-                        onChange={(e) => setSlateId(e.target.value)}
-                    >
-                        {materialOptions}
-                    </select>
-                </div>
                 <Cursor
                     position={cursorPosition}
                     radius={

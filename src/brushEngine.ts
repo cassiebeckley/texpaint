@@ -10,6 +10,7 @@ import fragBrush2dShader from './shaders/brush/2d.shader/frag.glsl';
 
 import vertBrush3dShader from './shaders/brush/3d.shader/vert.glsl';
 import fragBrush3dShader from './shaders/brush/3d.shader/frag.glsl';
+import Mesh from './mesh';
 
 class Spacer {
     spacing: number;
@@ -80,6 +81,8 @@ export default class BrushEngine {
     brush2dShader: Shader;
     brush3dShader: Shader;
 
+    private currentSlate: MaterialSlate;
+
     private framebuffer: WebGLFramebuffer;
 
     constructor(
@@ -115,8 +118,9 @@ export default class BrushEngine {
         );
         this.brush3dShader = brush3dSource.load(this.gl);
 
-        const gl = this.gl;
+        this.currentSlate = null;
 
+        const gl = this.gl;
         this.framebuffer = gl.createFramebuffer();
     }
 
@@ -134,6 +138,7 @@ export default class BrushEngine {
                 this.iteration(slate, coord, pressure)
             );
 
+            this.currentSlate = slate;
             slate.markUpdate();
         }
     }
@@ -142,7 +147,7 @@ export default class BrushEngine {
         this.spacer = null;
 
         this.iteration(slate, imageCoord, pressure);
-        this.updateTextures(slate);
+        this.updateTextures2D(slate);
         slate.apply();
     }
 
@@ -183,10 +188,8 @@ export default class BrushEngine {
         if (brushCenter) {
             this.iteration3d(brushCenter, pressure);
         }
-        for (let [_, slate] of this.windowManager.materials) {
-            this.updateTextures3D(slate);
-            slate.apply();
-        }
+        const slate = this.updateTextures3D(this.windowManager.mesh);
+        slate.apply();
     }
 
     private iteration(
@@ -394,10 +397,12 @@ export default class BrushEngine {
         this.stampRadius = [];
     }
 
-    private updateTextures3D(slate: MaterialSlate) {
-        if (!this.windowManager.mesh || this.stamp3d.length === 0) {
+    private updateTextures3D(mesh: Mesh) {
+        if (!mesh || this.stamp3d.length === 0) {
             return;
         }
+
+        const slate = this.windowManager.materials.get(mesh.data.materialId);
 
         // TODO: cover seams properly
         // TODO: maybe solve this by adding extra geometry at seams in a pre-process step when the mesh is loaded?
@@ -450,7 +455,7 @@ export default class BrushEngine {
             const offset = 0;
             gl.bindBuffer(
                 gl.ARRAY_BUFFER,
-                this.windowManager.mesh.vertexBuffer
+                mesh.vertexBuffer
             );
             gl.vertexAttribPointer(
                 this.brush3dShader.attributes.aVertexPosition,
@@ -471,7 +476,7 @@ export default class BrushEngine {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.windowManager.mesh.uvBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uvBuffer);
             gl.vertexAttribPointer(
                 this.brush3dShader.attributes.aTextureCoord,
                 size,
@@ -487,7 +492,7 @@ export default class BrushEngine {
 
         gl.bindBuffer(
             gl.ELEMENT_ARRAY_BUFFER,
-            this.windowManager.mesh.indexBuffer
+            mesh.indexBuffer
         );
 
         for (let i = 0; i < this.stamp3d.length; i++) {
@@ -501,7 +506,7 @@ export default class BrushEngine {
 
             gl.drawElements(
                 gl.TRIANGLES,
-                this.windowManager.mesh.data.triangles.length * 3,
+                mesh.data.triangles.length * 3,
                 gl.UNSIGNED_SHORT,
                 0
             );
@@ -512,15 +517,16 @@ export default class BrushEngine {
         gl.enable(gl.CULL_FACE);
 
         this.stamp3d = [];
+
+        return slate;
     }
 
-    updateTextures(currentSlate: MaterialSlate) {
-        if (currentSlate) {
-            this.updateTextures2D(currentSlate);
+    updateTextures() {
+        if (this.currentSlate) {
+            this.updateTextures2D(this.currentSlate);
+            this.currentSlate = null;
         }
 
-        for (let [_, slate] of this.windowManager.materials) {
-            this.updateTextures3D(slate);
-        }
+        this.updateTextures3D(this.windowManager.mesh);
     }
 }

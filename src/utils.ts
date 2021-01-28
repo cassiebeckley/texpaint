@@ -34,3 +34,8 @@ export function cacheByContext<T>(fn: (gl: WebGLRenderingContext) => T) {
         return value;
     };
 }
+
+export function camelCaseToSentence(camelCase: string) {
+    let s = camelCase.replace(/([^A-Z])([A-Z])/, "$1 $2");
+    return s[0].toUpperCase() + s.slice(1);
+}
