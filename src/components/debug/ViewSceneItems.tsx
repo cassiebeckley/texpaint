@@ -7,16 +7,14 @@ export default function ViewSceneItems() {
 
     let materials = [];
 
-    for (let [key, _] of windowManager.materials) {
-        materials.push(
-            <li key={key}>{key}</li>
-        );
+    for (let [key, _] of windowManager.scene.materials) {
+        materials.push(<li key={key}>{key}</li>);
     }
 
-    return <div>
-        <h2>Materials:</h2>
-        <ul>
-            {materials}
-        </ul>
-    </div>;
+    return (
+        <div>
+            <h2>Materials:</h2>
+            <ul>{materials}</ul>
+        </div>
+    );
 }

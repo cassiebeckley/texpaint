@@ -15,6 +15,7 @@ const BINARY_RIGHT_MOUSE_BUTTON = 0b100;
 
 export default function TexturePaint({ channel, materials }) {
     const windowManager = useContext(WindowContext);
+    const scene = windowManager.scene;
 
     const [slateId, setSlateId] = useState('');
 
@@ -36,7 +37,7 @@ export default function TexturePaint({ channel, materials }) {
 
     const div = useRef(null);
 
-    const slate = windowManager.materials.get(slateId);
+    const slate = scene.materials.get(slateId);
 
     useEffect(() => {
         if (materials && materials.length > 0 && slateId === '') {
@@ -152,6 +153,7 @@ export default function TexturePaint({ channel, materials }) {
                     imageCoords,
                     e.pressure
                 );
+                windowManager.drawOnNextFrame();
             }
             setPressure(1);
         }
@@ -211,23 +213,23 @@ export default function TexturePaint({ channel, materials }) {
 
     return (
         <div style={{ flexGrow: 1 }} ref={div}>
-        <div style={{color: 'white', padding: '10px'}}>
-            <label>
-                <input
-                    type="checkbox"
-                    id="uv"
-                    checked={uv}
-                    onChange={(e) => setUV(e.target.checked)}
-                />
-                Show UV Map
-            </label>
-            <select
-                value={slateId}
-                onChange={(e) => setSlateId(e.target.value)}
-            >
-                {materialOptions}
-            </select>
-        </div>
+            <div style={{ color: 'white', padding: '10px' }}>
+                <label>
+                    <input
+                        type="checkbox"
+                        id="uv"
+                        checked={uv}
+                        onChange={(e) => setUV(e.target.checked)}
+                    />
+                    Show UV Map
+                </label>
+                <select
+                    value={slateId}
+                    onChange={(e) => setSlateId(e.target.value)}
+                >
+                    {materialOptions}
+                </select>
+            </div>
             <Widget
                 constructor={TextureDisplay}
                 widgetProps={{ view, drawUVMap: uv, channel, slate }}

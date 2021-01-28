@@ -91,11 +91,9 @@ export default class MeshData {
             vec3.add(outputNormal, outputNormal, normalContribution);
 
             vec3.normalize(outputNormal, outputNormal);
-
-            return true;
         }
 
-        return false;
+        return closest;
     }
 }
 

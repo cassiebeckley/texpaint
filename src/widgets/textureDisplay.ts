@@ -164,15 +164,21 @@ export default class TextureDisplay {
             gl.drawArrays(gl.TRIANGLE_STRIP, offset, count);
         }
 
-        const mesh = windowManager.mesh;
-        if (drawUVMap && mesh) {
+        if (drawUVMap) {
             mat4.scale(modelViewMatrix, modelViewMatrix, [1, -1, 1]);
             mat4.translate(modelViewMatrix, modelViewMatrix, [0, -1, 0]);
-            mesh.drawUVLines(
-                gl,
-                modelViewMatrix,
-                windowManager.uiProjectionMatrix
-            );
+
+            for (let i = 0; i < windowManager.scene.meshes.length; i++) {
+                const mesh = windowManager.scene.meshes[i];
+
+                if (mesh.data.materialId !== slate.id) continue;
+
+                mesh.drawUVLines(
+                    gl,
+                    modelViewMatrix,
+                    windowManager.uiProjectionMatrix
+                );
+            }
         }
     }
 }

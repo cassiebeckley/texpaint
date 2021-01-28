@@ -7,10 +7,12 @@ export default function EnumSelect({ enumType, ...props }) {
     for (let key of Object.keys(enumType)) {
         if (!isNaN(Number(key))) continue;
 
-        options.push(<option key={key} value={enumType[key]}>{camelCaseToSentence(key)}</option>)
+        options.push(
+            <option key={key} value={enumType[key]}>
+                {camelCaseToSentence(key)}
+            </option>
+        );
     }
 
-    return <select {...props}>
-        {options}
-    </select>;
+    return <select {...props}>{options}</select>;
 }

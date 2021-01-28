@@ -11,6 +11,7 @@ import fragBrush2dShader from './shaders/brush/2d.shader/frag.glsl';
 import vertBrush3dShader from './shaders/brush/3d.shader/vert.glsl';
 import fragBrush3dShader from './shaders/brush/3d.shader/frag.glsl';
 import Mesh from './mesh';
+import type Scene from './scene';
 
 class Spacer {
     spacing: number;
@@ -71,6 +72,7 @@ export default class BrushEngine {
     spacer: Spacer;
     spacer3d: Spacer;
     windowManager: WindowManager;
+    scene: Scene;
 
     stampVertices: number[];
     stampUVs: number[];
@@ -98,6 +100,7 @@ export default class BrushEngine {
         this.soft = false;
 
         this.windowManager = windowManager;
+        this.scene = windowManager.scene;
 
         this.stampVertices = [];
         this.stampUVs = [];
@@ -171,7 +174,7 @@ export default class BrushEngine {
                 return this.getRadiusForStroke({ pressure });
             });
 
-            for (let [_, slate] of this.windowManager.materials) {
+            for (let [_, slate] of this.scene.materials) {
                 slate.markUpdate();
             }
         }
@@ -188,8 +191,12 @@ export default class BrushEngine {
         if (brushCenter) {
             this.iteration3d(brushCenter, pressure);
         }
-        const slate = this.updateTextures3D(this.windowManager.mesh);
-        slate.apply();
+
+        for (let i = 0; i < this.scene.meshes.length; i++) {
+            const slate = this.updateTextures3D(this.scene.meshes[i]);
+            if (!slate) continue;
+            slate.apply();
+        }
     }
 
     private iteration(
@@ -402,7 +409,7 @@ export default class BrushEngine {
             return;
         }
 
-        const slate = this.windowManager.materials.get(mesh.data.materialId);
+        const slate = this.scene.materials.get(mesh.data.materialId);
 
         // TODO: cover seams properly
         // TODO: maybe solve this by adding extra geometry at seams in a pre-process step when the mesh is loaded?
@@ -453,10 +460,7 @@ export default class BrushEngine {
             const normalize = false;
             const stride = 0;
             const offset = 0;
-            gl.bindBuffer(
-                gl.ARRAY_BUFFER,
-                mesh.vertexBuffer
-            );
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vertexBuffer);
             gl.vertexAttribPointer(
                 this.brush3dShader.attributes.aVertexPosition,
                 size,
@@ -490,10 +494,7 @@ export default class BrushEngine {
             );
         }
 
-        gl.bindBuffer(
-            gl.ELEMENT_ARRAY_BUFFER,
-            mesh.indexBuffer
-        );
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indexBuffer);
 
         for (let i = 0; i < this.stamp3d.length; i++) {
             const stamp = this.stamp3d[i];
@@ -527,6 +528,8 @@ export default class BrushEngine {
             this.currentSlate = null;
         }
 
-        this.updateTextures3D(this.windowManager.mesh);
+        for (let i = 0; i < this.scene.meshes.length; i++) {
+            this.updateTextures3D(this.scene.meshes[i]);
+        }
     }
 }

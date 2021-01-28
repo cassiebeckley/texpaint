@@ -4,9 +4,8 @@
 import Image from './loader/image';
 import WindowManager, { loadTextureFromImage } from './windowManager';
 
-import { vec3 } from 'gl-matrix';
-import { srgbToRgb } from './color';
 import Compositor, { createLayerTexture, fillTexture, O } from './compositor';
+import Brush from './brush';
 
 const DEFAULT_ALBEDO = 0.8;
 const DEFAULT_ALBEDO_BYTE = Math.round(DEFAULT_ALBEDO * 255);
@@ -100,8 +99,9 @@ class Layer {
 }
 
 export default class MaterialSlate {
-    windowManager: WindowManager;
     gl: WebGLRenderingContext;
+
+    brush: Brush;
 
     id: string;
     size: number;
@@ -121,12 +121,18 @@ export default class MaterialSlate {
 
     compositor: Compositor;
 
-    constructor(wm: WindowManager, id: string) {
-        this.windowManager = wm;
-        this.gl = wm.gl;
+    constructor(
+        gl: WebGLRenderingContext,
+        brush: Brush,
+        size: number,
+        id: string,
+        compositor: Compositor
+    ) {
+        this.gl = gl;
+        this.brush = brush;
 
         this.id = id;
-        this.size = wm.projectSize;
+        this.size = size;
 
         this.updated = true;
 
@@ -164,9 +170,7 @@ export default class MaterialSlate {
         ];
         this.historyIndex = 0;
 
-        const gl = this.gl;
-
-        this.compositor = new Compositor(wm, this.size, this.size);
+        this.compositor = compositor;
     }
 
     loadAlbedo(image: Image) {
@@ -197,7 +201,6 @@ export default class MaterialSlate {
 
     markUpdate() {
         this.updated = true;
-        this.windowManager.drawOnNextFrame();
     }
 
     resetHistory() {
@@ -245,8 +248,6 @@ export default class MaterialSlate {
 
         this.history.push(this.layer);
         this.historyIndex++;
-
-        this.windowManager.drawOnNextFrame();
     }
 
     undo() {
@@ -277,7 +278,7 @@ export default class MaterialSlate {
         this.compositor.run(
             this.albedo,
             O(this.layer.albedo).mix(
-                O(this.windowManager.brush.albedoTexture).mask(
+                O(this.brush.albedoTexture).mask(
                     this.currentOperation
                 )
             )
@@ -286,7 +287,7 @@ export default class MaterialSlate {
         this.compositor.run(
             this.roughness,
             O(this.layer.roughness).mix(
-                O(this.windowManager.brush.roughnessTexture).mask(
+                O(this.brush.roughnessTexture).mask(
                     this.currentOperation
                 )
             )
@@ -295,7 +296,7 @@ export default class MaterialSlate {
         this.compositor.run(
             this.metallic,
             O(this.layer.metallic).mix(
-                O(this.windowManager.brush.metallicTexture).mask(
+                O(this.brush.metallicTexture).mask(
                     this.currentOperation
                 )
             )

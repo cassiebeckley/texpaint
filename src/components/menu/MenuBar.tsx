@@ -42,9 +42,8 @@ export default function MenuBar({ on2d, on3d, setMaterials }) {
                         // TODO: probably try to match this up by name
                         break;
                     case AssetType.Mesh:
-                        const mesh = asset.meshes[0];
-                        windowManager.addMesh(mesh);
-                        setMaterials(windowManager.getMaterialList());
+                        windowManager.scene.addMeshes(asset.meshes);
+                        setMaterials(windowManager.scene.getMaterialList());
                         break;
                 }
                 windowManager.drawOnNextFrame();

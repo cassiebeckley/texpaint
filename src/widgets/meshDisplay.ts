@@ -78,7 +78,7 @@ export default class MeshDisplay {
         gl: WebGLRenderingContext,
         width: number,
         height: number,
-        mesh: Mesh,
+        meshes: Mesh[],
         lighting: Lighting,
         materials: Map<string, MaterialSlate>,
         {
@@ -103,12 +103,12 @@ export default class MeshDisplay {
             // this.drawBackground(gl, rotation, projection, lighting, backgroundOffset);
         }
 
-        if (mesh) {
+        for (let i = 0; i < meshes.length; i++) {
             const backgroundMatrix = mat4.create();
             mat4.identity(backgroundMatrix);
             mat4.rotateY(backgroundMatrix, backgroundMatrix, -backgroundOffset);
 
-            mesh.draw(
+            meshes[i].draw(
                 gl,
                 view,
                 projection,
@@ -152,9 +152,9 @@ export default class MeshDisplay {
             gl,
             width,
             height,
-            windowManager.mesh,
-            windowManager.lighting,
-            windowManager.materials,
+            windowManager.scene.meshes,
+            windowManager.lighting, // TODO: maybe put lighting in Scene?
+            windowManager.scene.materials,
             widgetProps
         );
     }

@@ -8,6 +8,8 @@ import MeshData from './loader/meshData';
 import Mesh from './mesh';
 import MaterialSlate from './materialSlate';
 import type Widget from './widget';
+import Scene from './scene';
+import Compositor from './compositor';
 
 const brushSize = 40.0; // TODO: brush size should be percentage of max dimension of texture/mesh; default should be a constant
 const brushColor = vec3.create();
@@ -34,10 +36,8 @@ export default class WindowManager {
 
     projectSize: number;
 
-    materials: Map<string, MaterialSlate>; // keeping this here until I find a better home for it
-    mesh: Mesh; // and this
-    brushEngine: BrushEngine; // and this as well
-    brush: Brush;
+    scene: Scene;
+    brushEngine: BrushEngine; // keeping this here until I find a better home for it
     viewport: number[];
 
     lighting: Lighting;
@@ -70,13 +70,14 @@ export default class WindowManager {
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'z' && e.ctrlKey) {
-                for (let [_, slate] of this.materials) {
+                // TODO: history (probably kept in Scene?) needs to record target material and texture
+                for (let [_, slate] of this.scene.materials) {
                     slate.undo();
                 }
 
                 this.drawOnNextFrame();
             } else if ((e.key === 'y' || e.key === 'Z') && e.ctrlKey) {
-                for (let [_, slate] of this.materials) {
+                for (let [_, slate] of this.scene.materials) {
                     slate.redo();
                 }
 
@@ -89,14 +90,16 @@ export default class WindowManager {
 
         this.projectSize = 1024; // TODO: let user set when creating project
 
-        this.materials = new Map();
-        this.mesh = null;
+        this.scene = new Scene(
+            this.gl,
+            this.projectSize,
+            new Compositor(this, this.projectSize, this.projectSize)
+        );
         this.brushEngine = new BrushEngine(
             brushSize,
             DEFAULT_BRUSH_SPACING,
             this
         );
-        this.brush = new Brush(this.gl);
 
         this.lighting = new Lighting(this.gl);
         this.lighting.load().then(() => this.drawOnNextFrame());
@@ -143,7 +146,7 @@ export default class WindowManager {
 
     draw() {
         this.brushEngine.updateTextures();
-        for (let [_, slate] of this.materials) {
+        for (let [_, slate] of this.scene.materials) {
             slate.updateTextures();
         }
 
@@ -217,26 +220,6 @@ export default class WindowManager {
     removeFromDrawList(cancelId: number) {
         this.drawList = this.drawList.filter(({ id }) => id !== cancelId);
         this.drawOnNextFrame();
-    }
-
-    addMesh(meshData: MeshData) {
-        this.addMaterial(meshData.materialId);
-        this.mesh = new Mesh(this.gl, meshData);
-    }
-
-    addMaterial(materialId: string) {
-        if (this.materials.has(materialId)) {
-            return;
-        }
-
-        const slate = new MaterialSlate(this, materialId);
-        this.materials.set(materialId, slate);
-
-        return slate;
-    }
-
-    getMaterialList() {
-        return Array.from(this.materials.keys());
     }
 }
 

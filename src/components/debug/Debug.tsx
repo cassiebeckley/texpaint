@@ -6,7 +6,7 @@ import ViewSceneItems from './ViewSceneItems';
 
 enum DebugPanels {
     ShaderCache,
-    SceneItems
+    SceneItems,
 }
 
 export default function Debug() {
@@ -16,15 +16,23 @@ export default function Debug() {
 
     switch (panel) {
         case DebugPanels.ShaderCache:
-            body = <ViewShaderCache />
+            body = <ViewShaderCache />;
             break;
         case DebugPanels.SceneItems:
-            body = <ViewSceneItems />
+            body = <ViewSceneItems />;
             break;
     }
 
-    return <div>
-        <EnumSelect enumType={DebugPanels} value={panel} onChange={e => {setPanel(Number(e.target.value))}} />
-        {body}
-    </div>;
+    return (
+        <div>
+            <EnumSelect
+                enumType={DebugPanels}
+                value={panel}
+                onChange={(e) => {
+                    setPanel(Number(e.target.value));
+                }}
+            />
+            {body}
+        </div>
+    );
 }
