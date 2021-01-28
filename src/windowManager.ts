@@ -5,7 +5,7 @@ import Lighting from './lighting';
 import Image, { ImageFormat, ImageStorage } from './loader/image';
 import MeshData from './loader/meshData';
 import Mesh from './mesh';
-import Slate from './slate';
+import MaterialSlate from './materialSlate';
 import type Widget from './widget';
 
 const brushSize = 40.0; // TODO: brush size should be percentage of max dimension of texture/mesh; default should be a constant
@@ -31,7 +31,9 @@ export default class WindowManager {
 
     frameRequest: number;
 
-    slate: Slate; // keeping this here until I find a better home for it
+    projectSize: number;
+
+    slate: MaterialSlate; // keeping this here until I find a better home for it
     mesh: Mesh; // and this
     brushEngine: BrushEngine; // and this as well
     viewport: number[];
@@ -79,7 +81,9 @@ export default class WindowManager {
         this.drawId = 0;
         this.drawList = [];
 
-        this.slate = new Slate(this, 1024, 1024);
+        this.projectSize = 1024; // TODO: let user set when creating project
+
+        this.slate = new MaterialSlate(this, this.projectSize, this.projectSize);
         this.mesh = null;
         this.brushEngine = new BrushEngine(
             brushSize,

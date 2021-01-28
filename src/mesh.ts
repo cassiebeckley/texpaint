@@ -14,7 +14,8 @@ import vertUVShader from './shaders/uv.shader/vert.glsl';
 import fragUVShader from './shaders/uv.shader/frag.glsl';
 
 import MeshData from './loader/meshData';
-import Slate from './slate';
+import MaterialSlate from './materialSlate';
+import Lighting from './lighting';
 
 export default class Mesh {
     data: MeshData;
@@ -32,9 +33,9 @@ export default class Mesh {
     positionShader: Shader;
     uvShader: Shader;
 
-    slate: Slate;
+    slate: MaterialSlate;
 
-    constructor(gl: WebGLRenderingContext, slate: Slate, data: MeshData) {
+    constructor(gl: WebGLRenderingContext, slate: MaterialSlate, data: MeshData) {
         this.slate = slate;
         this.data = data;
 
@@ -127,28 +128,31 @@ export default class Mesh {
         gl: WebGLRenderingContext,
         modelViewMatrix: mat4,
         projectionMatrix: mat4,
-        irradiance: WebGLTexture,
-        prefilterMaps: WebGLTexture[],
-        brdfLUT: WebGLTexture,
+        lighting: Lighting,
         backgroundMatrix: mat4
     ) {
-        drawStandard(
+        setUpStandard(
             gl,
             modelViewMatrix,
             projectionMatrix,
-            irradiance,
-            prefilterMaps,
-            brdfLUT,
+            lighting,
             backgroundMatrix,
             this.standardShader,
             this.vertexBuffer,
+            3,
             this.uvBuffer,
             this.normalBuffer,
-            this.indexBuffer,
             this.slate.albedo,
             this.slate.roughness,
-            this.slate.metallic,
-            this.data.triangles.length
+            this.slate.metallic
+        );
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+        gl.drawElements(
+            gl.TRIANGLES,
+            this.data.triangles.length * 3,
+            gl.UNSIGNED_SHORT,
+            0
         );
     }
 
@@ -319,23 +323,22 @@ const flatten = (vs): number[] => {
     return flat;
 };
 
-export function drawStandard(
+export function setUpStandard(
     gl: WebGLRenderingContext,
     modelViewMatrix: mat4,
     projectionMatrix: mat4,
-    irradiance: WebGLTexture,
-    prefilterMaps: WebGLTexture[],
-    brdfLUT: WebGLTexture,
+    lighting: Lighting,
     backgroundMatrix: mat4,
     standardShader: Shader,
     vertexBuffer: WebGLBuffer,
+    vertexBufferSize: number,
     uvBuffer: WebGLBuffer,
     normalBuffer: WebGLBuffer,
-    indexBuffer: WebGLBuffer,
     albedo: WebGLTexture,
     roughness: WebGLTexture,
     metallic: WebGLTexture,
-    triangleCount: number
+    filter = gl.LINEAR,
+    orthographic?: boolean
 ) {
     gl.useProgram(standardShader.program);
 
@@ -363,10 +366,14 @@ export function drawStandard(
     const cameraPos = vec3.create();
     vec3.transformMat4(cameraPos, cameraPos, invModelView);
 
+    if (orthographic) {
+        cameraPos[2] = -100000;
+    }
+
     gl.uniform3fv(standardShader.uniforms.uCameraPosition, cameraPos);
 
     {
-        const size = 3;
+        const size = vertexBufferSize;
         const type = gl.FLOAT; // 32 bit floats
         const normalize = false;
         const stride = 0;
@@ -419,50 +426,46 @@ export function drawStandard(
         gl.enableVertexAttribArray(standardShader.attributes.aVertexNormal);
     }
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, albedo);
     gl.uniform1i(standardShader.uniforms.uAlbedo, 0);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, roughness);
     gl.uniform1i(standardShader.uniforms.uRoughness, 1);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
 
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, metallic);
     gl.uniform1i(standardShader.uniforms.uMetallic, 2);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
 
     gl.activeTexture(gl.TEXTURE3);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, irradiance);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lighting.irradianceTexture);
     gl.uniform1i(standardShader.uniforms.uIrradiance, 3);
 
     gl.activeTexture(gl.TEXTURE4);
-    gl.bindTexture(gl.TEXTURE_2D, brdfLUT);
+    gl.bindTexture(gl.TEXTURE_2D, lighting.brdfTexture);
     gl.uniform1i(standardShader.uniforms.uBrdfLUT, 4);
 
     gl.activeTexture(gl.TEXTURE5);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[0]);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lighting.prefilteredTextures[0]);
     gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel0, 5);
 
     gl.activeTexture(gl.TEXTURE6);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[1]);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lighting.prefilteredTextures[1]);
     gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel1, 6);
 
     gl.activeTexture(gl.TEXTURE7);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[2]);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lighting.prefilteredTextures[2]);
     gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel2, 7);
 
     gl.activeTexture(gl.TEXTURE8);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[3]);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lighting.prefilteredTextures[3]);
     gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel3, 8);
 
     gl.activeTexture(gl.TEXTURE9);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilterMaps[4]);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, lighting.prefilteredTextures[4]);
     gl.uniform1i(standardShader.uniforms.uPrefilterMapLevel4, 9);
-
-    gl.drawElements(gl.TRIANGLES, triangleCount * 3, gl.UNSIGNED_SHORT, 0);
 }

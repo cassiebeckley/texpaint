@@ -3,14 +3,17 @@ import * as React from 'react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { SCROLL_SCALE } from '../constants';
 import { normalizeWheelEvent } from '../utils';
-import TextureDisplay, { getModelMatrix } from '../widgets/textureDisplay';
+import TextureDisplay, {
+    Channel,
+    getModelMatrix,
+} from '../widgets/textureDisplay';
 import Widget, { WindowContext } from './Widget';
 
 const BINARY_LEFT_MOUSE_BUTTON = 0b1;
 const BINARY_MIDDLE_MOUSE_BUTTON = 0b10;
 const BINARY_RIGHT_MOUSE_BUTTON = 0b100;
 
-export default function TexturePaint() {
+export default function TexturePaint({ channel }) {
     const windowManager = useContext(WindowContext);
 
     const [view, setView] = useState(() => {
@@ -173,7 +176,7 @@ export default function TexturePaint() {
         <div style={{ flexGrow: 1 }} ref={div}>
             <Widget
                 constructor={TextureDisplay}
-                widgetProps={{ view, drawUVMap: uv }}
+                widgetProps={{ view, drawUVMap: uv, channel }}
                 style={{
                     height: '100%',
                     position: 'relative',
@@ -218,7 +221,8 @@ const Cursor = ({ position, radius }) => {
                 top: position[1] - radius,
                 width: radius * 2,
                 height: radius * 2,
-                border: '1px solid #7f7f7f',
+                border: '1px solid black',
+                opacity: 0.5,
                 borderRadius: '50%',
                 zIndex: -1,
             }}

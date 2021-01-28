@@ -106,15 +106,7 @@ export default class MeshDisplay {
             mat4.identity(backgroundMatrix);
             mat4.rotateY(backgroundMatrix, backgroundMatrix, -backgroundOffset);
 
-            mesh.draw(
-                gl,
-                view,
-                projection,
-                lighting.irradianceTexture,
-                lighting.prefilteredTextures,
-                lighting.brdfTexture,
-                backgroundMatrix
-            );
+            mesh.draw(gl, view, projection, lighting, backgroundMatrix);
         }
 
         if (brushCursor) {

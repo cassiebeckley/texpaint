@@ -1,7 +1,7 @@
 import { mat4, vec2, vec3 } from 'gl-matrix';
 import { lerp } from './math';
 import { generateRectVertices, rectVerticesUV } from './primitives';
-import Slate from './slate';
+import MaterialSlate from './materialSlate';
 import WindowManager from './windowManager';
 import ShaderSource, { Shader } from './shaders';
 
@@ -67,7 +67,7 @@ export default class BrushEngine {
     spacing: number;
     soft: boolean;
 
-    slate: Slate;
+    slate: MaterialSlate;
 
     spacer: Spacer;
     spacer3d: Spacer;

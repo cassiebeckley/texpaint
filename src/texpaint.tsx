@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom';
 import ColorSelect from './widgets/colorSelect';
 import { WindowContext } from './components/Widget';
 import WindowManager from './windowManager';
-import TextureDisplay from './widgets/textureDisplay';
+import TextureDisplay, { Channel } from './widgets/textureDisplay';
 import MenuBar from './components/menu/MenuBar';
 import TexturePaint from './components/TexturePaint';
 import MeshPaint from './components/MeshPaint';
@@ -69,10 +69,28 @@ const App = () => {
     const [showMesh, setShowMesh] = useState(true);
     const [showShaders, setShowShaders] = useState(false);
 
-    window.addEventListener('keydown', (e) => {
+    const [channel, setChannel] = useState(Channel.Material);
+
+    const handleKeydown = (e: KeyboardEvent) => {
         if (e.key === '`' && e.ctrlKey) {
             setShowShaders(!showShaders);
         }
+
+        if (e.key === 'c') {
+            let nextChannel = channel + 1;
+
+            if (Channel[nextChannel] === undefined) {
+                nextChannel = 0;
+            }
+
+            setChannel(nextChannel);
+        }
+    };
+
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeydown);
+
+        return () => window.removeEventListener('keydown', handleKeydown);
     });
 
     return (
@@ -92,7 +110,7 @@ const App = () => {
                         position: 'relative',
                     }}
                 >
-                    {showTexture && <TexturePaint />}
+                    {showTexture && <TexturePaint channel={channel} />}
                     {showTexture && showMesh && <div className="divider" />}
                     {showMesh && <MeshPaint />}
                     {showShaders && (

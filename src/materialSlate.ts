@@ -99,7 +99,7 @@ class Layer {
     }
 }
 
-export default class Slate {
+export default class MaterialSlate {
     windowManager: WindowManager;
     gl: WebGLRenderingContext;
 

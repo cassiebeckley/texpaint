@@ -1,4 +1,5 @@
 import { vec3 } from 'gl-matrix';
+import { cacheByContext } from './utils';
 
 export const generateRectVerticesStrip = (
     x: number,
@@ -8,6 +9,31 @@ export const generateRectVerticesStrip = (
 ) => [x, y, x, y + height, x + width, y, x + width, y + height];
 
 export const rectVerticesStripUV = [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
+export const rectVerticesStripUVInverted = [
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+];
+
+export const rectVerticesStripNormal = [
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    1.0,
+];
 
 export const generateRectVertices = (
     x: number,
@@ -44,45 +70,29 @@ export const rectVerticesUV = [
     1.0,
 ];
 
-const unitRectPositionBufferCache = new WeakMap();
-export const getUnitRectPositionBuffer = (gl: WebGLRenderingContext) => {
-    if (unitRectPositionBufferCache.has(gl)) {
-        return unitRectPositionBufferCache.get(gl);
-    }
-
+const staticBufferGenerator = (data: number[]) => (
+    gl: WebGLRenderingContext
+) => {
     const buffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array(generateRectVerticesStrip(0, 0, 1, 1)),
-        gl.STATIC_DRAW
-    );
-
-    unitRectPositionBufferCache.set(gl, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
 
     return buffer;
 };
 
-const unitRectUVBufferCache = new WeakMap();
-export const getUnitRectUVBuffer = (gl: WebGLRenderingContext) => {
-    if (unitRectUVBufferCache.has(gl)) {
-        return unitRectUVBufferCache.get(gl);
-    }
-
-    const buffer = gl.createBuffer();
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array(rectVerticesStripUV),
-        gl.STATIC_DRAW
-    );
-
-    unitRectUVBufferCache.set(gl, buffer);
-
-    return buffer;
-};
+export const getUnitRectPositionBuffer = cacheByContext(
+    staticBufferGenerator(generateRectVerticesStrip(0, 0, 1, 1))
+);
+export const getUnitRectUVBuffer = cacheByContext(
+    staticBufferGenerator(rectVerticesStripUV)
+);
+export const getUnitRectUVBufferInverted = cacheByContext(
+    staticBufferGenerator(rectVerticesStripUVInverted)
+);
+export const getUnitRectNormalBuffer = cacheByContext(
+    staticBufferGenerator(rectVerticesStripNormal)
+);
 
 export const CUBE_VERTICES = [
     1,
