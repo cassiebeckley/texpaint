@@ -278,27 +278,21 @@ export default class MaterialSlate {
         this.compositor.run(
             this.albedo,
             O(this.layer.albedo).mix(
-                O(this.brush.albedoTexture).mask(
-                    this.currentOperation
-                )
+                O(this.brush.albedoTexture).mask(this.currentOperation)
             )
         );
 
         this.compositor.run(
             this.roughness,
             O(this.layer.roughness).mix(
-                O(this.brush.roughnessTexture).mask(
-                    this.currentOperation
-                )
+                O(this.brush.roughnessTexture).mask(this.currentOperation)
             )
         );
 
         this.compositor.run(
             this.metallic,
             O(this.layer.metallic).mix(
-                O(this.brush.metallicTexture).mask(
-                    this.currentOperation
-                )
+                O(this.brush.metallicTexture).mask(this.currentOperation)
             )
         );
 

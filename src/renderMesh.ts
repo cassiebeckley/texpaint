@@ -4,12 +4,6 @@ import ShaderSource, { Shader } from './shaders';
 import vertStandardShader from './shaders/workspace/standard.shader/vert.glsl';
 import fragStandardShader from './shaders/workspace/standard.shader/frag.glsl';
 
-import vertNormalShader from './shaders/workspace/normal.shader/vert.glsl';
-import fragNormalShader from './shaders/workspace/normal.shader/frag.glsl';
-
-import vertPositionShader from './shaders/workspace/position.shader/vert.glsl';
-import fragPositionShader from './shaders/workspace/position.shader/frag.glsl';
-
 import vertUVShader from './shaders/uv.shader/vert.glsl';
 import fragUVShader from './shaders/uv.shader/frag.glsl';
 
@@ -17,7 +11,7 @@ import MeshData from './loader/meshData';
 import MaterialSlate from './materialSlate';
 import Lighting from './lighting';
 
-export default class Mesh {
+export default class RenderMesh {
     data: MeshData;
 
     vertexBuffer: WebGLBuffer;
@@ -29,8 +23,6 @@ export default class Mesh {
 
     indexBuffer: WebGLBuffer;
     standardShader: Shader;
-    normalShader: Shader;
-    positionShader: Shader;
     uvShader: Shader;
 
     constructor(gl: WebGLRenderingContext, data: MeshData) {
@@ -51,19 +43,6 @@ export default class Mesh {
             fragStandardShader
         );
         this.standardShader = standardSource.load(gl);
-
-        const normalShaderSource = new ShaderSource(
-            'normal',
-            vertNormalShader,
-            fragNormalShader
-        );
-        this.normalShader = normalShaderSource.load(gl);
-
-        this.positionShader = new ShaderSource(
-            'position',
-            vertPositionShader,
-            fragPositionShader
-        ).load(gl);
 
         const uvSource = new ShaderSource('uv', vertUVShader, fragUVShader);
         this.uvShader = uvSource.load(gl);
@@ -156,100 +135,6 @@ export default class Mesh {
         );
     }
 
-    private drawBuffer(
-        gl: WebGLRenderingContext,
-        modelViewMatrix: mat4,
-        projectionMatrix: mat4,
-        normal: boolean
-    ) {
-        const shader = normal ? this.normalShader : this.positionShader;
-
-        gl.useProgram(shader.program);
-
-        // set projection and model*view matrices;
-        gl.uniformMatrix4fv(
-            shader.uniforms.uProjectionMatrix,
-            false,
-            projectionMatrix
-        );
-        gl.uniformMatrix4fv(
-            shader.uniforms.uModelViewMatrix,
-            false,
-            modelViewMatrix
-        );
-
-        const invModelView = mat4.create();
-        mat4.invert(invModelView, modelViewMatrix);
-
-        const cameraPos = vec3.create();
-        vec3.transformMat4(cameraPos, cameraPos, invModelView);
-
-        gl.uniform3fv(shader.uniforms.uCameraPosition, cameraPos);
-
-        {
-            const size = 3;
-            const type = gl.FLOAT; // 32 bit floats
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-            gl.vertexAttribPointer(
-                shader.attributes.aVertexPosition,
-                size,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(shader.attributes.aVertexPosition);
-        }
-
-        if (normal) {
-            {
-                const size = 3;
-                const type = gl.FLOAT;
-                const normalize = true;
-                const stride = 0;
-                const offset = 0;
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer);
-                gl.vertexAttribPointer(
-                    shader.attributes.aVertexNormal,
-                    size,
-                    type,
-                    normalize,
-                    stride,
-                    offset
-                );
-                gl.enableVertexAttribArray(shader.attributes.aVertexNormal);
-            }
-        }
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-
-        gl.drawElements(
-            gl.TRIANGLES,
-            this.data.triangles.length * 3,
-            gl.UNSIGNED_SHORT,
-            0
-        );
-    }
-
-    drawNormals(
-        gl: WebGLRenderingContext,
-        modelViewMatrix: mat4,
-        projectionMatrix: mat4
-    ) {
-        this.drawBuffer(gl, modelViewMatrix, projectionMatrix, true);
-    }
-
-    drawPositions(
-        gl: WebGLRenderingContext,
-        modelViewMatrix: mat4,
-        projectionMatrix: mat4
-    ) {
-        this.drawBuffer(gl, modelViewMatrix, projectionMatrix, false);
-    }
-
     drawUVLines(
         gl: WebGLRenderingContext,
         modelViewMatrix: mat4,
@@ -292,21 +177,6 @@ export default class Mesh {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
 
         gl.drawArrays(gl.LINES, 0, this.uvLineCount);
-    }
-
-    raycast(
-        intersectionOutput: vec3,
-        normalOutput: vec3,
-        origin: vec3,
-        direction: vec3
-    ) {
-        // TODO: use a BVH to speed this up
-        return this.data.raycast(
-            intersectionOutput,
-            normalOutput,
-            origin,
-            direction
-        );
     }
 }
 

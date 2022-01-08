@@ -36,13 +36,14 @@ export default function MenuBar({ on2d, on3d, setMaterials }) {
 
             (async () => {
                 const asset = await loadAssetFromBlob(file.name, file);
+                console.log('loaded asset:', asset);
                 switch (asset.type) {
                     case AssetType.Image:
                         // windowManager.slate.loadAlbedo(asset.image);
                         // TODO: probably try to match this up by name
                         break;
                     case AssetType.Mesh:
-                        windowManager.scene.addMeshes(asset.meshes);
+                        windowManager.scene.setMeshes(asset.meshes);
                         setMaterials(windowManager.scene.getMaterialList());
                         break;
                 }

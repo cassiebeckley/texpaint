@@ -1,5 +1,5 @@
-import vertCompositeShader from 'url:./shaders/composite.shader/vert.glsl';
-import fragCompositeShader from 'url:./shaders/composite.shader/frag.glsl';
+import vertCompositeShader from './shaders/composite.shader/vert.glsl';
+import fragCompositeShader from './shaders/composite.shader/frag.glsl';
 import { getUnitRectPositionBuffer, getUnitRectUVBuffer } from './primitives';
 import ShaderSource, { Shader } from './shaders';
 import WindowManager from './windowManager';

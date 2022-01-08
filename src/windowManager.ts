@@ -1,12 +1,8 @@
 import { mat4, vec2, vec3 } from 'gl-matrix';
 import BrushEngine from './brushEngine';
-import Brush from './brush';
 import { DEFAULT_BRUSH_SPACING } from './constants';
 import Lighting from './lighting';
 import Image, { ImageFormat, ImageStorage } from './loader/image';
-import MeshData from './loader/meshData';
-import Mesh from './mesh';
-import MaterialSlate from './materialSlate';
 import type Widget from './widget';
 import Scene from './scene';
 import Compositor from './compositor';
@@ -102,7 +98,7 @@ export default class WindowManager {
         );
 
         this.lighting = new Lighting(this.gl);
-        this.lighting.load().then(() => this.drawOnNextFrame());
+        this.lighting.load().then(() => this.drawOnNextFrame()).catch(e=>console.log("error?", e));
     }
 
     setViewport(x: number, y: number, width: number, height: number) {
@@ -157,13 +153,8 @@ export default class WindowManager {
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         for (let i = 0; i < this.drawList.length; i++) {
-            const {
-                widget,
-                position,
-                width,
-                height,
-                widgetProps,
-            } = this.drawList[i];
+            const { widget, position, width, height, widgetProps } =
+                this.drawList[i];
             this.setViewport(position[0], position[1], width, height);
             widget.draw(this, width, height, widgetProps);
         }

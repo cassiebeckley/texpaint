@@ -2,13 +2,16 @@ import { srgbToRgb } from '../color';
 import parseExr from './exr';
 import { getHDRImage } from './hdr';
 import Image, { ImageFormat, ImageStorage } from './image';
-import Asset, { AssetType } from './asset';
+import { Asset, AssetType } from './asset';
 import parseTiff from './tiff';
 import parseWaveformObj from './obj';
 
 const getExtension = (path: string) => {
     const parts = path.split('.');
-    return parts[parts.length - 1];
+    const matches = /\.([^.?]+)(\?.*)?$/.exec(path);
+    if (matches) {
+        return matches[1];
+    }
 };
 
 const loaders: {
@@ -110,7 +113,7 @@ export async function loadAssetFromBlob(
         return loaders[extension](data);
     }
 
-    console.log('no registered loaders, trying to load as <img>');
+    console.log('no registered loaders, trying to load as <img>:', name);
 
     const url = URL.createObjectURL(blob);
     try {

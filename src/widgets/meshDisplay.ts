@@ -15,7 +15,7 @@ import vertBackgroundShader from '../shaders/workspace/background.shader/vert.gl
 import fragBackgroundShader from '../shaders/workspace/background.shader/frag.glsl';
 
 import { FAR, FIELD_OF_VIEW, NEAR } from '../constants';
-import Mesh from '../mesh';
+import RenderMesh from '../renderMesh';
 import type Lighting from '../lighting';
 import MaterialSlate from '../materialSlate';
 
@@ -78,7 +78,7 @@ export default class MeshDisplay {
         gl: WebGLRenderingContext,
         width: number,
         height: number,
-        meshes: Mesh[],
+        meshes: RenderMesh[],
         lighting: Lighting,
         materials: Map<string, MaterialSlate>,
         {

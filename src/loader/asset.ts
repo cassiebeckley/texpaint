@@ -16,6 +16,4 @@ export interface MeshAsset {
     meshes: MeshData[]; // TODO: better handling for file types that contain multiple assets, ie OBJ with meshes
 }
 
-type Asset = ImageAsset | MeshAsset;
-
-export default Asset;
+export type Asset = ImageAsset | MeshAsset;

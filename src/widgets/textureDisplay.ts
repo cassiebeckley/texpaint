@@ -14,7 +14,7 @@ import {
     getUnitRectUVBufferInverted,
 } from '../primitives';
 import WindowManager from '../windowManager';
-import { setUpStandard } from '../mesh';
+import { setUpStandard } from '../renderMesh';
 
 export enum Channel {
     Material,

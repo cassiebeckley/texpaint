@@ -10,7 +10,7 @@ import fragBrush2dShader from './shaders/brush/2d.shader/frag.glsl';
 
 import vertBrush3dShader from './shaders/brush/3d.shader/vert.glsl';
 import fragBrush3dShader from './shaders/brush/3d.shader/frag.glsl';
-import Mesh from './mesh';
+import RenderMesh from './renderMesh';
 import type Scene from './scene';
 
 class Spacer {
@@ -404,7 +404,7 @@ export default class BrushEngine {
         this.stampRadius = [];
     }
 
-    private updateTextures3D(mesh: Mesh) {
+    private updateTextures3D(mesh: RenderMesh) {
         if (!mesh || this.stamp3d.length === 0) {
             return;
         }

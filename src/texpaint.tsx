@@ -1,24 +1,18 @@
-import { vec3 } from 'gl-matrix';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
-import ColorSelect from './widgets/colorSelect';
 import { WindowContext } from './components/Widget';
 import WindowManager from './windowManager';
-import TextureDisplay, { Channel } from './widgets/textureDisplay';
+import { Channel } from './widgets/textureDisplay';
 import MenuBar from './components/menu/MenuBar';
 import TexturePaint from './components/TexturePaint';
 import MeshPaint from './components/MeshPaint';
-import MeshDisplay from './widgets/meshDisplay';
-import Widget from './widget';
-import ImageWidget from './widgets/imageWidget';
 import Debug from './components/debug/Debug';
 import Modal from './components/Modal';
 
 const Renderer = ({
     children,
 }: {
-    widgets: (new () => Widget)[];
     children: any;
 }) => {
     const [error, setError] = useState(null);
@@ -95,14 +89,7 @@ const App = () => {
 
     return (
         <div style={{ display: 'flex', height: '100%' }}>
-            <Renderer
-                widgets={[
-                    ColorSelect,
-                    TextureDisplay,
-                    MeshDisplay,
-                    ImageWidget,
-                ]}
-            >
+            <Renderer>
                 <div
                     style={{
                         flexGrow: 1,

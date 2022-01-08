@@ -202,26 +202,15 @@ export default function MeshPaint({}) {
         vec3.normalize(camDirection, camDirection);
 
         if (scene.meshes.length > 0) {
-            let closest = Infinity;
             const point = vec3.create();
             const normal = vec3.create();
 
-            for (let i = 0; i < scene.meshes.length; i++) {
-                const currentPoint = vec3.create();
-                const currentNormal = vec3.create();
-
-                const intersection = scene.meshes[i].raycast(
-                    currentPoint,
-                    currentNormal,
-                    camOrigin,
-                    camDirection
-                );
-                if (intersection > 0 && intersection < closest) {
-                    closest = intersection;
-                    vec3.copy(point, currentPoint);
-                    vec3.copy(normal, currentNormal);
-                }
-            }
+            const closest = scene.raycast(
+                point,
+                normal,
+                camOrigin,
+                camDirection
+            );
 
             if (isFinite(closest)) {
                 setPaintPoint(point);

@@ -26,6 +26,49 @@ export default class MeshData {
         this.materialId = materialId;
     }
 
+    intersect(
+        outputPoint: vec3,
+        outputUV: vec2,
+        origin: vec3,
+        direction: vec3,
+        triangleIndex: number
+    ) {
+        const triangle = this.triangles[triangleIndex];
+
+        return rayTriangleIntersection(
+            outputPoint,
+            outputUV,
+            origin,
+            direction,
+            this.vertices[triangle[0]],
+            this.vertices[triangle[1]],
+            this.vertices[triangle[2]]
+        );
+    }
+
+    getNormal(outputNormal: vec3, uv: vec2, triangleIndex: number) {
+        const [u, v] = uv;
+        const triangle = this.triangles[triangleIndex];
+        vec3.zero(outputNormal);
+
+        const normalContribution = vec3.create();
+
+        vec3.scale(normalContribution, this.vertexNormals[triangle[0]], u);
+        vec3.add(outputNormal, outputNormal, normalContribution);
+
+        vec3.scale(normalContribution, this.vertexNormals[triangle[1]], v);
+        vec3.add(outputNormal, outputNormal, normalContribution);
+
+        vec3.scale(
+            normalContribution,
+            this.vertexNormals[triangle[2]],
+            1 - u - v
+        );
+        vec3.add(outputNormal, outputNormal, normalContribution);
+
+        vec3.normalize(outputNormal, outputNormal);
+    }
+
     raycast(
         outputIntersection: vec3,
         outputNormal: vec3,
@@ -36,61 +79,31 @@ export default class MeshData {
         let closest = Infinity;
         let closestPoint = vec3.create();
         const closestUV = vec2.create();
-        let closestTriangle: Triangle = null;
+        let closestTriangleIndex = 0;
 
         const currentPoint = vec3.create();
         const currentUV = vec2.create();
 
         for (let i = 0; i < this.triangles.length; i++) {
-            const triangle = this.triangles[i];
-
-            const intersection = rayTriangleIntersection(
+            const intersection = this.intersect(
                 currentPoint,
                 currentUV,
                 origin,
                 direction,
-                this.vertices[triangle[0]],
-                this.vertices[triangle[1]],
-                this.vertices[triangle[2]]
+                i
             );
             if (intersection > 0 && intersection < closest) {
                 closest = intersection;
                 vec3.copy(closestPoint, currentPoint);
                 vec2.copy(closestUV, currentUV);
-                closestTriangle = triangle;
+                closestTriangleIndex = i;
             }
         }
 
         if (isFinite(closest)) {
-            const [u, v] = closestUV;
             vec3.copy(outputIntersection, closestPoint);
 
-            vec3.zero(outputNormal);
-
-            const normalContribution = vec3.create();
-
-            vec3.scale(
-                normalContribution,
-                this.vertexNormals[closestTriangle[0]],
-                u
-            );
-            vec3.add(outputNormal, outputNormal, normalContribution);
-
-            vec3.scale(
-                normalContribution,
-                this.vertexNormals[closestTriangle[1]],
-                v
-            );
-            vec3.add(outputNormal, outputNormal, normalContribution);
-
-            vec3.scale(
-                normalContribution,
-                this.vertexNormals[closestTriangle[2]],
-                1 - u - v
-            );
-            vec3.add(outputNormal, outputNormal, normalContribution);
-
-            vec3.normalize(outputNormal, outputNormal);
+            this.getNormal(outputNormal, currentUV, closestTriangleIndex);
         }
 
         return closest;

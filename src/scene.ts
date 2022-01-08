@@ -1,8 +1,10 @@
 import MeshData from './loader/meshData';
-import Mesh from './mesh';
+import RenderMesh from './renderMesh';
 import MaterialSlate from './materialSlate';
 import Compositor from './compositor';
 import Brush from './brush';
+import BVH from './bvh';
+import { vec3 } from 'gl-matrix';
 
 export default class Scene {
     gl: WebGLRenderingContext;
@@ -12,7 +14,8 @@ export default class Scene {
     compositor: Compositor;
 
     materials: Map<string, MaterialSlate>;
-    meshes: Mesh[];
+    meshes: RenderMesh[];
+    bvh: BVH;
 
     constructor(
         gl: WebGLRenderingContext,
@@ -29,11 +32,23 @@ export default class Scene {
         this.meshes = [];
     }
 
-    addMeshes(meshes: MeshData[]) {
+    setMeshes(meshes: MeshData[]) {
+        this.meshes = [];
+        const triangles = [];
+
         for (let meshData of meshes) {
             this.addMaterial(meshData.materialId);
-            this.meshes.push(new Mesh(this.gl, meshData));
+            this.meshes.push(new RenderMesh(this.gl, meshData));
+
+            for (let triangle of meshData.triangles) {
+                triangles.push({
+                    mesh: meshData,
+                    indices: triangle,
+                });
+            }
         }
+
+        this.bvh = new BVH(triangles);
     }
 
     addMaterial(materialId: string) {
@@ -55,5 +70,29 @@ export default class Scene {
 
     getMaterialList() {
         return Array.from(this.materials.keys());
+    }
+
+    raycast(point: vec3, normal: vec3, origin: vec3, direction: vec3) {
+        let closest = Infinity;
+
+        for (let i = 0; i < this.meshes.length; i++) {
+            const currentPoint = vec3.create();
+            const currentNormal = vec3.create();
+
+            const intersection = this.meshes[i].data.raycast(
+                currentPoint,
+                currentNormal,
+                origin,
+                direction
+            );
+
+            if (intersection > 0 && intersection < closest) {
+                closest = intersection;
+                vec3.copy(point, currentPoint);
+                vec3.copy(normal, currentNormal);
+            }
+        }
+
+        return closest;
     }
 }
