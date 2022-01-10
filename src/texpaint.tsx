@@ -10,6 +10,9 @@ import MeshPaint from './components/MeshPaint';
 import Debug from './components/debug/Debug';
 import Modal from './components/Modal';
 
+// TODO: disable in release
+import 'webgl-lint';
+
 const Renderer = ({
     children,
 }: {
@@ -23,7 +26,7 @@ const Renderer = ({
         if (windowManager === null) {
             setWindowManager(new WindowManager(canvas.current));
         } else {
-            windowManager.draw();
+            // windowManager.draw();
         }
     });
 

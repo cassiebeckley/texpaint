@@ -1,12 +1,15 @@
+#version 300 es
 #pragma glslify: tonemap = require(../../color/tonemap)
 
 precision mediump float;
 
 uniform vec3 uCameraPosition;
 
-varying highp vec2 vTextureCoord;
-varying highp vec3 vVertexNormal;
-varying highp vec3 vWorldPosition;
+in highp vec2 vTextureCoord;
+in highp vec3 vVertexNormal;
+in highp vec3 vWorldPosition;
+
+out vec4 finalColor;
 
 uniform sampler2D uAlbedo;
 uniform sampler2D uMetallic;
@@ -62,33 +65,6 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
     return ggx1 * ggx2;
 }
 
-highp vec3 textureCubeSample(samplerCube cubemap, highp vec3 dir) {
-    // sort of awkward attempt at smoothing float texture
-    // TODO: this should all go once I switch to spherical harmonics
-    float sampleDelta = 0.1;
-    vec3 samples = vec3(0.0);
-
-    float startAngle = -(sampleDelta * 2.0) / 2.0;
-
-    vec3 up = vec3(0.0, 1.0, 0.0);
-    vec3 right = cross(up, dir);
-    up = cross(dir, right);
-
-    for (int phiIter = 0; phiIter < 4; phiIter++) {
-        float phi = float(phiIter) * sampleDelta + startAngle;
-        for (int thetaIter = 0; thetaIter < 4; thetaIter++) {
-            float theta = float(thetaIter) * sampleDelta + startAngle;
-
-            vec3 tangentSample = vec3(sin(theta) * cos(theta), sin(theta) * sin(phi), cos(theta));
-            vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * dir;
-
-            samples += textureCube(cubemap, sampleVec).rgb;
-        }
-    }
-
-    return samples * (1.0 / 16.0);
-}
-
 vec3 getPrefiltered(vec3 R, float roughness) {
     const float MAX_REFLECTION_LOD = 4.0;
     float level = roughness * MAX_REFLECTION_LOD;
@@ -100,17 +76,17 @@ vec3 getPrefiltered(vec3 R, float roughness) {
     vec3 b;
 
     if (level < 1.0) {
-        a = textureCube(uPrefilterMapLevel0, R).rgb;
-        b = textureCube(uPrefilterMapLevel1, R).rgb;
+        a = texture(uPrefilterMapLevel0, R).rgb;
+        b = texture(uPrefilterMapLevel1, R).rgb;
     } else if (level < 2.0) {
-        a = textureCube(uPrefilterMapLevel1, R).rgb;
-        b = textureCube(uPrefilterMapLevel2, R).rgb;
+        a = texture(uPrefilterMapLevel1, R).rgb;
+        b = texture(uPrefilterMapLevel2, R).rgb;
     } else if (level < 3.0) {
-        a = textureCube(uPrefilterMapLevel2, R).rgb;
-        b = textureCube(uPrefilterMapLevel3, R).rgb;
+        a = texture(uPrefilterMapLevel2, R).rgb;
+        b = texture(uPrefilterMapLevel3, R).rgb;
     } else {
-        a = textureCube(uPrefilterMapLevel3, R).rgb;
-        b = textureCube(uPrefilterMapLevel4, R).rgb;
+        a = texture(uPrefilterMapLevel3, R).rgb;
+        b = texture(uPrefilterMapLevel4, R).rgb;
     }
 
     return mix(a, b, t);
@@ -124,11 +100,11 @@ void main() {
     highp vec3 V = normalize(uCameraPosition - vWorldPosition);
     highp vec3 R = reflect(-V, N);
 
-    vec3 albedo = texture2D(uAlbedo, coord).rgb;
-    float roughness = texture2D(uRoughness, coord).x;
-    float metallic = texture2D(uMetallic, coord).x;
+    vec3 albedo = texture(uAlbedo, coord).rgb;
+    float roughness = texture(uRoughness, coord).x;
+    float metallic = texture(uMetallic, coord).x;
 
-    highp vec3 irradiance = textureCubeSample(uIrradiance, (uBackgroundMatrix * vec4(N, 1.0)).xyz).rgb;
+    highp vec3 irradiance = texture(uIrradiance, (uBackgroundMatrix * vec4(N, 1.0)).xyz).rgb;
     highp vec3 prefilteredColor = getPrefiltered((uBackgroundMatrix * vec4(R, 1.0)).xyz, roughness);
 
     vec3 F0 = vec3(0.04); // TODO: probably calculate this from the IOR
@@ -138,7 +114,7 @@ void main() {
 
     float brdf_x = max(dot(N, V), 0.0);
     float brdf_y = 1.0 - roughness;
-    vec2 brdf = texture2D(uBrdfLUT, vec2(brdf_x, brdf_y)).rg;
+    vec2 brdf = texture(uBrdfLUT, vec2(brdf_x, brdf_y)).rg;
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
     vec3 kS = F;
@@ -150,6 +126,6 @@ void main() {
     vec3 ambient = (kD * diffuse + specular) * ao;
 
     vec3 color = ambient;
-    gl_FragColor.rgb = tonemap(color);
-    gl_FragColor.a = 1.0;
+    finalColor.rgb = tonemap(color);
+    finalColor.a = 1.0;
 }

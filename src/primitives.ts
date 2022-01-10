@@ -42,7 +42,7 @@ export const rectVerticesUV = [
 ];
 
 const staticBufferGenerator =
-    (data: number[]) => (gl: WebGLRenderingContext) => {
+    (data: number[]) => (gl: WebGL2RenderingContext) => {
         const buffer = gl.createBuffer();
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);

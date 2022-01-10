@@ -1,16 +1,17 @@
+#version 300 es
 precision mediump float;
 
-attribute vec4 aVertexPosition;
-attribute vec2 aTextureCoord;
-attribute vec3 aVertexNormal;
+in vec4 aVertexPosition;
+in vec2 aTextureCoord;
+in vec3 aVertexNormal;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 
-varying highp vec2 vTextureCoord;
-varying highp vec3 vVertexNormal;
+out highp vec2 vTextureCoord;
+out highp vec3 vVertexNormal;
 
-varying highp vec3 vWorldPosition;
+out highp vec3 vWorldPosition;
 
 void main() {
     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;

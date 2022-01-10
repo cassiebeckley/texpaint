@@ -6,13 +6,13 @@ const DEFAULT_ROUGHNESS = 0.5;
 const DEFAULT_METALLIC = 0.0;
 
 export default class Brush {
-    gl: WebGLRenderingContext;
+    gl: WebGL2RenderingContext;
 
     albedoTexture: WebGLTexture;
     roughnessTexture: WebGLTexture;
     metallicTexture: WebGLTexture;
 
-    constructor(gl: WebGLRenderingContext) {
+    constructor(gl: WebGL2RenderingContext) {
         this.gl = gl;
 
         this.albedoTexture = gl.createTexture();

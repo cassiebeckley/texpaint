@@ -12,7 +12,7 @@ export default class ImageWidget {
 
     imageTexture: WebGLTexture;
 
-    async initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGL2RenderingContext) {
         const imageSource = new ShaderSource(
             'image',
             vertImageShader,

@@ -10,7 +10,7 @@ import WindowManager from '../windowManager';
 export default class ColorSelect {
     colorSelectShader: Shader;
 
-    async initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGL2RenderingContext) {
         const colorSource = new ShaderSource(
             'colorSelect',
             vertColorSelectShader,
@@ -52,7 +52,6 @@ export default class ColorSelect {
         );
 
         gl.uniform3fv(this.colorSelectShader.uniforms.uHSV, hsvColor);
-        gl.uniform1f(this.colorSelectShader.uniforms.uDisplay, 1.0);
         gl.uniform1f(this.colorSelectShader.uniforms.uRadius, radius / width);
         gl.uniform1f(
             this.colorSelectShader.uniforms.uWheelWidth,

@@ -18,7 +18,7 @@ class Layer {
     metallic: WebGLTexture;
 
     constructor(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         width: number,
         height: number,
         fillColor?: Uint8ClampedArray,
@@ -54,7 +54,7 @@ class Layer {
     }
 
     fill(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         width: number,
         height: number,
         fillColor: Uint8ClampedArray,
@@ -91,7 +91,7 @@ class Layer {
         );
     }
 
-    delete(gl: WebGLRenderingContext) {
+    delete(gl: WebGL2RenderingContext) {
         gl.deleteTexture(this.albedo);
         gl.deleteTexture(this.roughness);
         gl.deleteTexture(this.metallic);
@@ -99,7 +99,7 @@ class Layer {
 }
 
 export default class MaterialSlate {
-    gl: WebGLRenderingContext;
+    gl: WebGL2RenderingContext;
 
     brush: Brush;
 
@@ -122,7 +122,7 @@ export default class MaterialSlate {
     compositor: Compositor;
 
     constructor(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         brush: Brush,
         size: number,
         id: string,

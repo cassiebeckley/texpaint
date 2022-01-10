@@ -1,7 +1,10 @@
+#version 300 es
 precision mediump float;
 
-varying vec3 vWorldPosition;
-varying float vPixelWidth;
+in vec3 vWorldPosition;
+in float vPixelWidth;
+
+out vec4 color;
 
 uniform vec3 uCenter;
 uniform float uRadius;
@@ -20,5 +23,5 @@ void main() {
         mask = linear * linear;
     }
 
-    gl_FragColor = vec4(mask);
+    color = vec4(mask);
 }

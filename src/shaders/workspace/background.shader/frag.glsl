@@ -1,15 +1,18 @@
+#version 300 es
 #pragma glslify: rgb_to_srgb = require(../../color/rgb_to_srgb)
 
 precision mediump float;
 
-varying vec3 vPosition;
+in vec3 vPosition;
+
+out vec4 color;
 
 uniform samplerCube uSkybox;
 
 void main() {
     vec3 direction = normalize(vPosition);
 
-    gl_FragColor = textureCube(uSkybox, direction);
-    gl_FragColor.rgb = rgb_to_srgb(gl_FragColor.rgb);
-    gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
+    color = texture(uSkybox, direction);
+    color.rgb = rgb_to_srgb(color.rgb);
+    color.rgb *= color.a; // premultiply alpha
 }

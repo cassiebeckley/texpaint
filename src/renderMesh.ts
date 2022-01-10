@@ -25,7 +25,7 @@ export default class RenderMesh {
     standardShader: Shader;
     uvShader: Shader;
 
-    constructor(gl: WebGLRenderingContext, data: MeshData) {
+    constructor(gl: WebGL2RenderingContext, data: MeshData) {
         this.data = data;
 
         this.vertexBuffer = gl.createBuffer();
@@ -101,7 +101,7 @@ export default class RenderMesh {
     }
 
     draw(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         modelViewMatrix: mat4,
         projectionMatrix: mat4,
         lighting: Lighting,
@@ -136,7 +136,7 @@ export default class RenderMesh {
     }
 
     drawUVLines(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         modelViewMatrix: mat4,
         uiProjectionMatrix: mat4
     ) {
@@ -194,7 +194,7 @@ const flatten = (vs): number[] => {
 };
 
 export function setUpStandard(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     modelViewMatrix: mat4,
     projectionMatrix: mat4,
     lighting: Lighting,

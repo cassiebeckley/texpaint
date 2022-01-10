@@ -1,13 +1,16 @@
+#version 300 es
 #pragma glslify: ODT = require(../color/aces/odt_academy_srgb)
 
 precision mediump float;
 
-varying highp vec2 vTextureCoord;
+in highp vec2 vTextureCoord;
+
+out vec4 color;
 
 uniform sampler2D uSampler;
 
 void main() {
-    gl_FragColor = texture2D(uSampler, vTextureCoord);
-    gl_FragColor.rgb = ODT(gl_FragColor.rgb);
-    gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
+    color = texture(uSampler, vTextureCoord);
+    color.rgb = ODT(color.rgb);
+    color.rgb *= color.a; // premultiply alpha
 }

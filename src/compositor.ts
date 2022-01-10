@@ -44,7 +44,7 @@ class OperationBuilder {
 
 export default class Compositor {
     private windowManager: WindowManager;
-    private gl: WebGLRenderingContext;
+    private gl: WebGL2RenderingContext;
     private width: number;
     private height: number;
 
@@ -229,7 +229,7 @@ export default class Compositor {
 }
 
 export function createLayerTexture(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     width: number,
     height: number,
     fill?: Uint8ClampedArray
@@ -246,7 +246,7 @@ export function createLayerTexture(
 }
 
 export function fillTexture(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     texture: WebGLTexture,
     width: number,
     height: number,

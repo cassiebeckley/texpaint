@@ -27,7 +27,7 @@ export default class TextureDisplay {
     standardShader: Shader;
     imageShader: Shader;
 
-    async initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGL2RenderingContext) {
         const standardSource = new ShaderSource(
             'standard',
             vertStandardShader,

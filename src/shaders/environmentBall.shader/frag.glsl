@@ -1,3 +1,4 @@
+#version 300 es
 #pragma glslify: rgb_to_srgb = require(../color/rgb_to_srgb)
 
 precision mediump float;
@@ -5,7 +6,9 @@ precision mediump float;
 uniform samplerCube uSkybox;
 uniform mat4 uRotationMatrix;
 
-varying highp vec2 vTextureCoord;
+in highp vec2 vTextureCoord;
+
+out vec4 color;
 
 #define PI 3.1415926538
 
@@ -38,7 +41,7 @@ void main() {
 
     vec3 rotated = normalize((uRotationMatrix * vec4(reflection, 0.0)).xyz);
 
-    gl_FragColor = vec4(textureCube(uSkybox, rotated).rgb, inBall);
-    gl_FragColor.rgb = rgb_to_srgb(gl_FragColor.rgb);
-    gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
+    color = vec4(texture(uSkybox, rotated).rgb, inBall);
+    color.rgb = rgb_to_srgb(color.rgb);
+    color.rgb *= color.a; // premultiply alpha
 }

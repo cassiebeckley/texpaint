@@ -55,14 +55,14 @@ import { loadAssetFromURL } from './loader';
 
 export default class Lighting {
     loaded: boolean;
-    gl: WebGLRenderingContext;
+    gl: WebGL2RenderingContext;
 
     skyboxTexture: WebGLTexture;
     brdfTexture: WebGLTexture;
     irradianceTexture: WebGLTexture;
     prefilteredTextures: WebGLTexture[];
 
-    constructor(gl: WebGLRenderingContext) {
+    constructor(gl: WebGL2RenderingContext) {
         // TODO: take irradiance and prefiltered environment maps as parameters
         this.loaded = false;
         this.gl = gl;
@@ -208,7 +208,7 @@ export default class Lighting {
             let pixels = image.storage.pixels;
 
             const level = 0;
-            const internalFormat = gl.RGBA;
+            const internalFormat = gl.RGBA32F;
             const format = gl.RGBA;
             const type = gl.FLOAT;
             gl.texImage2D(
@@ -227,12 +227,12 @@ export default class Lighting {
         gl.texParameteri(
             gl.TEXTURE_CUBE_MAP,
             gl.TEXTURE_MIN_FILTER,
-            gl.NEAREST
+            gl.LINEAR
         );
         gl.texParameteri(
             gl.TEXTURE_CUBE_MAP,
             gl.TEXTURE_MAG_FILTER,
-            gl.NEAREST
+            gl.LINEAR
         );
 
         if (brdf_lut.type != AssetType.Image) {
@@ -270,7 +270,7 @@ export default class Lighting {
                 let pixels = image.storage.pixels;
 
                 const mipLevel = 0;
-                const internalFormat = gl.RGBA;
+                const internalFormat = gl.RGBA32F;
                 const format = gl.RGBA;
                 const type = gl.FLOAT;
                 gl.texImage2D(
@@ -286,15 +286,16 @@ export default class Lighting {
                 );
             }
 
+            // TODO: almost certainly need to store different prefilter levels as mip livels and use mip linear lookup
             gl.texParameteri(
                 gl.TEXTURE_CUBE_MAP,
                 gl.TEXTURE_MIN_FILTER,
-                gl.NEAREST
+                gl.LINEAR
             );
             gl.texParameteri(
                 gl.TEXTURE_CUBE_MAP,
                 gl.TEXTURE_MAG_FILTER,
-                gl.NEAREST
+                gl.LINEAR
             );
         }
 

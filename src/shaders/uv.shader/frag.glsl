@@ -1,6 +1,9 @@
+#version 300 es
 precision mediump float;
 
+out vec4 color;
+
 void main() {
-    gl_FragColor = vec4(0, 0, 0, 0.5);
-    gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
+    color = vec4(0, 0, 0, 0.5);
+    color.rgb *= color.a; // premultiply alpha
 }

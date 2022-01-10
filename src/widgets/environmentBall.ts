@@ -22,8 +22,9 @@ import { ImageStorage } from '../loader/image';
 export default class EnvironmentBall {
     ballShader: Shader;
     skyboxTexture: WebGLTexture;
+    skyboxLoaded: boolean;
 
-    async initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGL2RenderingContext) {
         const imageSource = new ShaderSource(
             'environmentBall',
             vertBallShader,
@@ -81,8 +82,12 @@ export default class EnvironmentBall {
             );
         }
 
-        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        // TODO: check if this texture is a duplicate
+
+        gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
+        this.skyboxLoaded = true;
 
         return true;
     }
@@ -93,6 +98,10 @@ export default class EnvironmentBall {
         height: number,
         { rotation, backgroundOffset }
     ) {
+        if (!this.skyboxLoaded) {
+            // TODO: maybe have a default skybox image instead?
+            return;
+        }
         const gl = windowManager.gl;
 
         const modelViewMatrix = mat4.create();

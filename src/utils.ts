@@ -21,10 +21,10 @@ export const normalizeWheelEvent = (e: WheelEvent) => {
     return amount;
 };
 
-export function cacheByContext<T>(fn: (gl: WebGLRenderingContext) => T) {
-    const cache: WeakMap<WebGLRenderingContext, T> = new WeakMap();
+export function cacheByContext<T>(fn: (gl: WebGL2RenderingContext) => T) {
+    const cache: WeakMap<WebGL2RenderingContext, T> = new WeakMap();
 
-    return (gl: WebGLRenderingContext) => {
+    return (gl: WebGL2RenderingContext) => {
         if (cache.has(gl)) {
             return cache.get(gl);
         }

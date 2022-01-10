@@ -13,7 +13,7 @@ vec3.set(brushColor, 0, 0, 0);
 
 export default class WindowManager {
     canvas: HTMLCanvasElement;
-    gl: WebGLRenderingContext;
+    gl: WebGL2RenderingContext;
     widgets: WeakMap<{ new (): Widget }, Widget>;
     uiProjectionMatrix: mat4;
 
@@ -40,10 +40,10 @@ export default class WindowManager {
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        this.gl = canvas.getContext('webgl', { alpha: true });
+        this.gl = canvas.getContext('webgl2', { alpha: true });
         this.uiProjectionMatrix = mat4.create();
 
-        glAssertEnable(this.gl, 'OES_texture_float');
+        glAssertEnable(this.gl, 'OES_texture_float_linear');
 
         this.gl.enable(this.gl.CULL_FACE);
 
@@ -209,12 +209,13 @@ export default class WindowManager {
     }
 
     removeFromDrawList(cancelId: number) {
+        // TODO: this is actually called on every widget state update so linear search might not be the fastest if there's a larger number of widgets
         this.drawList = this.drawList.filter(({ id }) => id !== cancelId);
         this.drawOnNextFrame();
     }
 }
 
-const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
+const glAssertEnable = (gl: WebGL2RenderingContext, extName: string) => {
     const ext = gl.getExtension(extName);
     if (!ext) {
         throw new Error(
@@ -224,25 +225,29 @@ const glAssertEnable = (gl: WebGLRenderingContext, extName: string) => {
     return ext;
 };
 
+// TODO: been a while since I wrote this but isn't it weird this is here? probably put it somewhere else
 export function loadTextureFromImage(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     texture: WebGLTexture,
     image: Image
 ): WebGLTexture {
-    let format = gl.RGB;
-    if (image.format === ImageFormat.RGBA) {
-        format = gl.RGBA;
-    }
-
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    const level = 0;
-    const internalFormat = format;
-    const srcFormat = format;
 
-    let srcType = gl.UNSIGNED_BYTE;
-    if (image.storage.type === ImageStorage.Float32) {
-        srcType = gl.FLOAT;
+    const level = 0;
+
+    const float = image.storage.type === ImageStorage.Float32;
+
+    let internalFormat: number;
+    let srcFormat: number;
+    if (image.format === ImageFormat.RGB) {
+        internalFormat = float ? gl.RGB32F : gl.RGB;
+        srcFormat = gl.RGB;
+    } else if (image.format === ImageFormat.RGBA) {
+        internalFormat = float ? gl.RGBA32F : gl.RGBA;
+        srcFormat = gl.RGBA;
     }
+
+    let srcType = float ? gl.FLOAT : gl.UNSIGNED_BYTE;
 
     const border = 0;
     gl.texImage2D(
@@ -260,13 +265,9 @@ export function loadTextureFromImage(
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    if (image.storage.type === ImageStorage.Uint8) {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    } else if (image.storage.type === ImageStorage.Float32) {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    }
+    // TODO: do I want to allow mipmaps here?
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
     return texture;
 }

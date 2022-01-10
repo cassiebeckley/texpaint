@@ -1,12 +1,14 @@
+#version 300 es
 precision mediump float;
 
 uniform lowp vec3 uHSV;
-uniform lowp float uDisplay; // TODO: remove
 
 uniform highp float uRadius;
 uniform highp float uWheelWidth;
 
-varying highp vec2 vTextureCoord;
+in highp vec2 vTextureCoord;
+
+out vec4 color;
 
 const highp vec2 center = vec2(0.5, 0.5);
 
@@ -59,7 +61,7 @@ void main() {
     lowp vec3 triangleHSV = vec3(uHSV.x, saturation, value);
     lowp vec4 triangleRGB = vec4(hsvToRgb(triangleHSV) * inTriangle, inTriangle);
 
-    gl_FragColor = wheelRGB + triangleRGB;
-    gl_FragColor.a = clamp(gl_FragColor.a, 0.0, 1.0);
-    gl_FragColor.rgb *= gl_FragColor.a; // premultiply alpha
+    color = wheelRGB + triangleRGB;
+    color.a = clamp(color.a, 0.0, 1.0);
+    color.rgb *= color.a; // premultiply alpha
 }

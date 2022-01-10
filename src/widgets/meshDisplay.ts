@@ -33,7 +33,7 @@ export default class MeshDisplay {
 
     backgroundShader: Shader;
 
-    async initGL(gl: WebGLRenderingContext) {
+    async initGL(gl: WebGL2RenderingContext) {
         this.cubeBuffer = gl.createBuffer();
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeBuffer);
@@ -75,7 +75,7 @@ export default class MeshDisplay {
     }
 
     drawMainPass(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         width: number,
         height: number,
         meshes: RenderMesh[],
@@ -100,7 +100,7 @@ export default class MeshDisplay {
         getProjection(projection, width, height);
 
         if (lighting.loaded) {
-            // this.drawBackground(gl, rotation, projection, lighting, backgroundOffset);
+            this.drawBackground(gl, rotation, projection, lighting, backgroundOffset);
         }
 
         for (let i = 0; i < meshes.length; i++) {
@@ -160,7 +160,7 @@ export default class MeshDisplay {
     }
 
     drawBackground(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         rotation: quat,
         projectionMatrix: mat4,
         lighting: Lighting,
@@ -235,7 +235,7 @@ export default class MeshDisplay {
     }
 
     drawCircle(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         viewMatrix: mat4,
         projectionMatrix: mat4,
         position: vec3,

@@ -1,9 +1,12 @@
+#version 300 es
 precision mediump float;
 
 uniform bool uSoft;
 
-varying highp vec2 vTextureCoord;
-varying float vPixelWidth;
+in highp vec2 vTextureCoord;
+in float vPixelWidth;
+
+out vec4 color;
 
 void main() {
     float mask = 0.0;
@@ -15,5 +18,5 @@ void main() {
         mask = linear * linear;
     }
 
-    gl_FragColor = vec4(mask);
+    color = vec4(mask);
 }

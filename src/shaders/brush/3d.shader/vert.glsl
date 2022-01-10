@@ -1,7 +1,8 @@
+#version 300 es
 precision mediump float;
 
-attribute vec4 aVertexPosition;
-attribute vec2 aTextureCoord;
+in vec4 aVertexPosition;
+in vec2 aTextureCoord;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
@@ -9,8 +10,8 @@ uniform mat4 uProjectionMatrix;
 uniform int uTextureWidth;
 uniform int uTextureHeight;
 
-varying vec3 vWorldPosition;
-varying float vPixelWidth;
+out vec3 vWorldPosition;
+out float vPixelWidth;
 
 void main() {
     vec2 position = aTextureCoord * vec2(uTextureWidth, uTextureHeight);

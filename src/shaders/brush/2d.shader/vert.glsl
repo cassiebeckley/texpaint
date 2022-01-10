@@ -1,14 +1,15 @@
+#version 300 es
 precision mediump float;
 
-attribute vec4 aVertexPosition;
-attribute vec2 aTextureCoord;
-attribute float aBrushRadius;
+in vec4 aVertexPosition;
+in vec2 aTextureCoord;
+in float aBrushRadius;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 
-varying highp vec2 vTextureCoord;
-varying float vPixelWidth;
+out highp vec2 vTextureCoord;
+out float vPixelWidth;
 
 void main() {
     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;

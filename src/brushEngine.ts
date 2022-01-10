@@ -63,7 +63,7 @@ class Spacer {
 }
 
 export default class BrushEngine {
-    gl: WebGLRenderingContext;
+    gl: WebGL2RenderingContext;
 
     radius: number;
     spacing: number;

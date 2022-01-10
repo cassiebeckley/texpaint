@@ -14,7 +14,7 @@ export interface Shader {
 }
 
 const loadShader = (
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     type: number,
     source: string,
     shaderName: string
@@ -32,7 +32,7 @@ const loadShader = (
 };
 
 const loadShaderProgram = (
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     source: ShaderSource
 ): Shader => {
     const vertexShader = loadShader(
@@ -90,7 +90,7 @@ const loadShaderProgram = (
 };
 
 const cache: WeakMap<
-    WebGLRenderingContext,
+    WebGL2RenderingContext,
     Map<string, Shader>
 > = new WeakMap();
 
@@ -104,7 +104,7 @@ export default class ShaderSource {
         this.fragment = fragmentSource;
     }
 
-    load(gl: WebGLRenderingContext) {
+    load(gl: WebGL2RenderingContext) {
         if (!cache.has(gl)) {
             cache.set(gl, new Map());
         }
@@ -121,6 +121,6 @@ export default class ShaderSource {
     }
 }
 
-export function getCache(gl: WebGLRenderingContext) {
+export function getCache(gl: WebGL2RenderingContext) {
     return cache.get(gl);
 }

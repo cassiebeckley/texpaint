@@ -7,7 +7,7 @@ import BVH from './bvh';
 import { vec3 } from 'gl-matrix';
 
 export default class Scene {
-    gl: WebGLRenderingContext;
+    gl: WebGL2RenderingContext;
     brush: Brush;
 
     size: number;
@@ -18,7 +18,7 @@ export default class Scene {
     bvh: BVH;
 
     constructor(
-        gl: WebGLRenderingContext,
+        gl: WebGL2RenderingContext,
         size: number,
         compositor: Compositor
     ) {
